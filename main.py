@@ -18,6 +18,8 @@ from model import Policy
 from storage import RolloutStorage
 from utils import get_vec_normalize
 from visualize import visdom_plot
+from tensorboardX import SummaryWriter
+
 
 args = get_args()
 
@@ -102,9 +104,12 @@ def main():
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            for info in infos:
+            for idx in range(len(infos)):
+                info = infos[idx]
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
+                    steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
+                    writer.add_scalar('data/reward', info['episode']['r'], steps_done )
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
@@ -199,6 +204,9 @@ def main():
                                   args.algo, args.num_frames)
             except IOError:
                 pass
+    
+    writer.export_scalars_to_json("./all_scalars.json")
+    writer.close()
 
 
 if __name__ == "__main__":
