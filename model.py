@@ -12,13 +12,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], **base_kwargs)
+            self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
         else:
@@ -165,9 +165,9 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, activation, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
-
+        self.activation = activation
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0),
@@ -176,7 +176,14 @@ class CNNBase(NNBase):
         self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-        self.f1 = init_(nn.Linear(32*7*7, hidden_size))
+        if self.activation == 0:
+            self.f1 = init_(nn.Linear(32*7*7, hidden_size))
+        else:
+            init_ = lambda m: init(m,
+                nn.init.orthogonal_,
+                lambda x: nn.init.constant_(x, 0),
+                nn.init.calculate_gain('tanh'))
+            self.f1 = init_(nn.Linear(32*7*7, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -192,12 +199,16 @@ class CNNBase(NNBase):
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
-        x = F.relu(self.f1(x))
 
-        if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+        x = self.f1(x)
 
-        return self.critic_linear(x), x, rnn_hxs
+        # if self.is_recurrent:
+        #     x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        if self.activation == 0:
+            return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs
+        else:
+            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
 
 
 class MLPBase(NNBase):
