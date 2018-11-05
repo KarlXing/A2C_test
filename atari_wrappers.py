@@ -174,7 +174,6 @@ class WarpFrameCarl(gym.ObservationWrapper):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = frame[:172,:]
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
-        print(frame.shape)
         return frame[:,:,None]
 
 
