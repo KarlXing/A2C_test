@@ -65,6 +65,8 @@ def get_args():
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--activation', type=int, default=0,
                         help='activation function for f1 layer, default 0 : relu, 1 : tanh')
+    parser.add_argument('--carl-wrapper', action='store_true',default=False,
+                        help='use deepmind wrapper or carl wrapper')
 
     args = parser.parse_args()
 

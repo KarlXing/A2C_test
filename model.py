@@ -177,7 +177,7 @@ class CNNBase(NNBase):
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
         if self.activation == 0:
-            self.f1 = init_(nn.Linear(32*7*7, hidden_size))
+            self.f1 = init_(nn.Linear(11264, hidden_size))
         else:
             init_ = lambda m: init(m,
                 nn.init.orthogonal_,

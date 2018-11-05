@@ -162,6 +162,19 @@ class WarpFrame(gym.ObservationWrapper):
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[:, :, None]
 
+class WarpFrameCarl(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        self.width = 160
+        self.height = 210
+        self.observation_space = spaces.Box(low=0, high=255,
+            shape=(self.width, self.height, 1), dtype=np.uint8)
+
+    def observation(self, frame):
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        return frame[:,:,None]
+
+
 class ResizeFrame(gym.ObservationWrapper):
     def __init__(self, env):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
@@ -291,3 +304,20 @@ def wrap_carl(env, episode_life=True, scale_rewards = True, clip_rewards=False, 
         env = ScaleRewardEnv(env)
     return env
 
+def wrap_carl_new(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
+    """Configure environment for DeepMind-style Atari with scale rewards
+    """
+    if episode_life:
+        env = EpisodicLifeEnv(env)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = WarpFrameCarl(env)
+    if scale:
+        env = ScaledFloatFrame(env)
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    if frame_stack:
+        env = FrameStack(env, 4)
+    if scale_rewards:
+        env = ScaleRewardEnv(env)
+    return env

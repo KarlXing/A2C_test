@@ -6,7 +6,7 @@ import torch
 from gym.spaces.box import Box
 
 from baselines import bench
-from atari_wrappers import make_atari, wrap_carl
+from atari_wrappers import make_atari, wrap_carl, wrap_deepmind, wrap_carl_new
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -29,7 +29,7 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
+def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_wrapper):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -53,8 +53,10 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
                                 allow_early_resets=allow_early_resets)
 
         if is_atari:
-            env = wrap_carl(env)
-
+            if new_wrapper:
+                env = wrap_carl_new(env)
+            else:
+                env = wrap_deepmind(env)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
@@ -65,8 +67,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets):
     return _thunk
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
-                  device, allow_early_resets, num_frame_stack=None):
-    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets)
+                  device, allow_early_resets, num_frame_stack=None, new_wrapper=False):
+    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets, new_wrapper)
             for i in range(num_processes)]
 
     if len(envs) > 1:

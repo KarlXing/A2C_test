@@ -62,7 +62,7 @@ def main():
         win = None
 
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device, False)
+                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -164,7 +164,7 @@ def main():
                 and j % args.eval_interval == 0):
             eval_envs = make_vec_envs(
                 args.env_name, args.seed + args.num_processes, args.num_processes,
-                args.gamma, eval_log_dir, args.add_timestep, device, True)
+                args.gamma, eval_log_dir, args.add_timestep, device, True, 4, args.carl_wrapper)
 
             vec_norm = get_vec_normalize(eval_envs)
             if vec_norm is not None:
