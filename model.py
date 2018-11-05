@@ -183,7 +183,7 @@ class CNNBase(NNBase):
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
-            self.f1 = init_(nn.Linear(32*7*7, hidden_size))
+            self.f1 = init_(nn.Linear(11264, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
