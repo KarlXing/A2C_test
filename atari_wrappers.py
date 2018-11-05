@@ -165,13 +165,16 @@ class WarpFrame(gym.ObservationWrapper):
 class WarpFrameCarl(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
-        self.width = 160
-        self.height = 210
+        self.width = 80
+        self.height = 86
         self.observation_space = spaces.Box(low=0, high=255,
             shape=(self.width, self.height, 1), dtype=np.uint8)
 
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        frame = frame[:172,:]
+        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        print(frame.shape)
         return frame[:,:,None]
 
 
