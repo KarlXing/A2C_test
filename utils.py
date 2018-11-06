@@ -56,7 +56,10 @@ def tanh_g(x,g):
     return torch.tanh(x)
 
 def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
+    value = value.cpu()
+    next_value = next_value.cpu()
     evaluations = 0.75*evaluations + 0.25*(reward+next_value-value)
     evaluations = evaluations*masks
     for i in range(g.shape[0]):
         g[i][0] = tonic_g if abs(evaluations[i][0]) > threshold else phasic_g
+    return evaluations, g

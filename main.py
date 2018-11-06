@@ -84,14 +84,14 @@ def main():
 
     tonic_g = args.tanh_tonic if args.modulation else 1.0
     phasic_g = args.tanh_phasic if args.modulation else 1.0
-    g = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
-    evaluations = torch.zeros(args.num_processes, 1).to(device)
+    g = torch.ones(args.num_processes, 1)*tonic_g
+    evaluations = torch.zeros(args.num_processes, 1)
     # next_xxx to calculate next value and update mode
     next_g = torch.ones(args.num_processes,1).to(device) #next g doesn't need update since it has no effect on V
     next_recurrent_hidden_states = torch.zeros(args.num_processes, actor_critic.recurrent_hidden_state_size).to(device)
     next_masks = torch.zeros(args.num_processes,1).to(device)
     next_obs = torch.zeros(args.num_processes, *envs.observation_space.shape).to(device)
-    next_reward = torch.zeros(args.num_processes,1).to(device) 
+
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size, tonic_g)
@@ -121,12 +121,11 @@ def main():
                                        for done_ in done])
             # update g
             with torch.no_grad():
-                next_reward.copy_(reward)
                 next_recurrent_hidden_states.copy_(recurrent_hidden_states)
                 next_masks.copy_(masks)
                 next_obs.copy_(obs)
                 next_value = actor_critic.get_value(next_obs, next_g, next_recurrent_hidden_states, next_masks).detach()
-            update_mode(evaluations, next_masks, next_reward, value, next_value, tonic_g, phasic_g, g, 0.2)
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, 0.2)
 
             for idx in range(len(infos)):
                 info = infos[idx]
