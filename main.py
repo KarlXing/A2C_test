@@ -83,7 +83,7 @@ def main():
                                args.entropy_coef, acktr=True)
 
     tonic_g = args.tanh_tonic if args.modulation else 1.0
-    phasic_g = args.phasic_g if args.modulation else 1.0
+    phasic_g = args.tanh_phasic if args.modulation else 1.0
     g = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1).to(device)
     # next_xxx to calculate next value
