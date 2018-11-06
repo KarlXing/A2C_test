@@ -55,7 +55,7 @@ def tanh_g(x,g):
     x = x/g
     return torch.tanh(x)
 
-def update_mode(evaluations, next_masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
+def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
     evaluations = 0.75*evaluations + 0.25*(reward+next_value-value)
     evaluations = evaluations*masks
     for i in range(g.shape[0]):
