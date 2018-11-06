@@ -126,7 +126,7 @@ def main():
                 next_masks.copy_(masks)
                 next_obs.copy_(obs)
                 next_value = actor_critic.get_value(next_obs, next_g, next_recurrent_hidden_states, next_masks).detach()
-            evaluations, g = update_mode(evaluations, next_masks, next_reward, value, next_value, tonic_g, phasic_g, g, 0.2)
+            update_mode(evaluations, next_masks, next_reward, value, next_value, tonic_g, phasic_g, g, 0.2)
 
             for idx in range(len(infos)):
                 info = infos[idx]
