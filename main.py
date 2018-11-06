@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize
+from utils import get_vec_normalize, update_mode
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -82,9 +82,19 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
+    tonic_g = args.tanh_tonic if args.modulation else 1.0
+    phasic_g = args.phasic_g if args.modulation else 1.0
+    g = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
+    evaluations = torch.zeros(args.num_processes, 1).to(device)
+    # next_xxx to calculate next value
+    next_g = torch.ones(args.num_processes,1).to(device) #next g doesn't need update since it has no effect on V
+    next_recurrent_hidden_states = torch.zeros(args.num_processes, actor_critic.recurrent_hidden_state_size).to(device)
+    next_masks = torch.zeros(args.num_processes,1).to(device)
+    next_obs = torch.zeros(args.num_processes, *envs.observation_space.shape).to(device)
+
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size)
+                        actor_critic.recurrent_hidden_state_size, tonic_g)
 
     obs = envs.reset()
     rollouts.obs[0].copy_(obs)
@@ -99,11 +109,23 @@ def main():
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
+                        rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+
+            # If done then clean the history of observations.
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                       for done_ in done])
+            # update g
+            with torch.no_grad():
+                next_recurrent_hidden_states.copy_(recurrent_hidden_states)
+                next_masks.copy_(masks)
+                next_obs.copy_(obs)
+                next_value = actor_critic.get_value(next_obs, next_g, next_recurrent_hidden_states, next_masks).detach()
+            evaluations, g = update_mode(evaluations, next_masks, reward, value, next_value, tonic_g, phasic_g, g, 0.2)
 
             for idx in range(len(infos)):
                 info = infos[idx]
@@ -112,15 +134,12 @@ def main():
                     steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done )
 
-            # If done then clean the history of observations.
-            masks = torch.FloatTensor([[0.0] if done_ else [1.0]
-                                       for done_ in done])
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g)
 
-        with torch.no_grad():
-            next_value = actor_critic.get_value(rollouts.obs[-1],
-                                                rollouts.recurrent_hidden_states[-1],
-                                                rollouts.masks[-1]).detach()
+        # with torch.no_grad():
+        #     next_value = actor_critic.get_value(rollouts.obs[-1],
+        #                                         rollouts.recurrent_hidden_states[-1],
+        #                                         rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 

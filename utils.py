@@ -50,3 +50,13 @@ def init(module, weight_init, bias_init, gain=1):
 def init_normc_(weight, gain=1):
     weight.normal_(0, 1)
     weight *= gain / torch.sqrt(weight.pow(2).sum(1, keepdim=True))
+
+def tanh_g(x,g):
+    x = x/g
+    return torch.tanh(x)
+
+def update_mode(evaluations, next_masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
+    evaluations = 0.75*evaluations + 0.25*(reward+next_value-value)
+    evaluations = evaluations*masks
+    for i in range(g.shape[0]):
+        g[i][0] = tonic_g if abs(evaluations[i][0]) > threshold else phasic_g

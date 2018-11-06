@@ -67,6 +67,12 @@ def get_args():
                         help='activation function for f1 layer, default 0 : relu, 1 : tanh')
     parser.add_argument('--carl-wrapper', action='store_true',default=False,
                         help='use deepmind wrapper or carl wrapper')
+    parser.add_argument('--modulation', action='store_true', default=False,
+                        help='use modulation or not')
+    parser.add_argument('--tanh-tonic', type=float, default=2.0,
+                        help='tonic g value for tanh fucntion')
+    parser.add_argument('--tanh-phasic', type=float, default=0.5,
+                        help='phasic g value for tanh function')
 
     args = parser.parse_args()
 

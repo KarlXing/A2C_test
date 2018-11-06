@@ -7,8 +7,9 @@ def _flatten_helper(T, N, _tensor):
 
 
 class RolloutStorage(object):
-    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size):
+    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, tonic_g):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
+        self.g = torch.ones(num_steps+1, num_processes, 1)*tonic_g
         self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
@@ -28,6 +29,7 @@ class RolloutStorage(object):
 
     def to(self, device):
         self.obs = self.obs.to(device)
+        self.g = self.g.to(device)
         self.recurrent_hidden_states = self.recurrent_hidden_states.to(device)
         self.rewards = self.rewards.to(device)
         self.value_preds = self.value_preds.to(device)
@@ -36,8 +38,9 @@ class RolloutStorage(object):
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
 
-    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks):
+    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, g):
         self.obs[self.step + 1].copy_(obs)
+        self.g[self.step + 1].copy_(g)
         self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
         self.actions[self.step].copy_(actions)
         self.action_log_probs[self.step].copy_(action_log_probs)
@@ -51,6 +54,7 @@ class RolloutStorage(object):
         self.obs[0].copy_(self.obs[-1])
         self.recurrent_hidden_states[0].copy_(self.recurrent_hidden_states[-1])
         self.masks[0].copy_(self.masks[-1])
+        self.g[0].copy_(self.g[-1])
 
     def compute_returns(self, next_value, use_gae, gamma, tau):
         if use_gae:

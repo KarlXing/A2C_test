@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from distributions import Categorical, DiagGaussian
-from utils import init, init_normc_
+from utils import init, init_normc_, tanh_g
 
 
 class Flatten(nn.Module):
@@ -45,8 +45,8 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+    def act(self, inputs, g, rnn_hxs, masks, deterministic=False):
+        value, actor_features, rnn_hxs = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -59,12 +59,12 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, rnn_hxs
 
-    def get_value(self, inputs, rnn_hxs, masks):
-        value, _, _ = self.base(inputs, rnn_hxs, masks)
+    def get_value(self, inputs, g, rnn_hxs, masks):
+        value, _, _ = self.base(inputs, g, rnn_hxs, masks)
         return value
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+    def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
+        value, actor_features, rnn_hxs = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -177,13 +177,13 @@ class CNNBase(NNBase):
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
         if self.activation == 0:
-            self.f1 = init_(nn.Linear(1344, hidden_size))
+            self.f1 = init_(nn.Linear(9216, hidden_size))
         else:
             init_ = lambda m: init(m,
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
-            self.f1 = init_(nn.Linear(1344, hidden_size))
+            self.f1 = init_(nn.Linear(9216, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -193,7 +193,7 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, rnn_hxs, masks):
+    def forward(self, inputs, g, rnn_hxs, masks):
         x = inputs/255.0
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
@@ -208,7 +208,7 @@ class CNNBase(NNBase):
         if self.activation == 0:
             return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs
         else:
-            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
+            return self.critic_linear(F.relu(x)), tanh_g(x,g), rnn_hxs
 
 
 class MLPBase(NNBase):
