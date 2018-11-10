@@ -195,7 +195,7 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs, g, rnn_hxs, masks):
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
