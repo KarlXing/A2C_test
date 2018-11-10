@@ -12,13 +12,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, modulation, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
+            self.base = CNNBase(obs_shape[0], activation=activation, modulation = modulation, **base_kwargs)
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
         else:
@@ -165,9 +165,10 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, activation, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, activation, modulation, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
+        self.modulation = modulation
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0),
@@ -194,7 +195,6 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs, g, rnn_hxs, masks):
-        x = inputs/255.0
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -208,7 +208,10 @@ class CNNBase(NNBase):
         if self.activation == 0:
             return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs
         else:
-            return self.critic_linear(F.relu(x)), tanh_g(x,g), rnn_hxs
+            if self.modulation == 1:
+                return self.critic_linear(F.relu(x)), tanh_g(x,g), rnn_hxs
+            elif self.modulation == 0:
+                return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
 
 
 class MLPBase(NNBase):

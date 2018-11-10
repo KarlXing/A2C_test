@@ -58,8 +58,14 @@ def tanh_g(x,g):
 def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
     value = value.cpu()
     next_value = next_value.cpu()
-    evaluations = 0.75*evaluations + 0.25*(reward+next_value-value)
+    evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
     evaluations = evaluations*masks
     for i in range(g.shape[0]):
         g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
     return evaluations, g
+
+def neuro_activity(obs, g, mid = 128):
+    assert(obs.shape[0] == g.shape[0])
+    for i in range(obs.shape[0]):
+        obs[i] = (torch.tanh((obs[i]-mid)/g[i])+1)/2
+    return obs

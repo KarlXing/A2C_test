@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode
+from utils import get_vec_normalize, update_mode, neuro_activity
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -82,21 +82,33 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
 
-    tonic_g = args.tanh_tonic if args.modulation else 1.0
-    phasic_g = args.tanh_phasic if args.modulation else 1.0
+    if args.modulation == 0:
+        tonic_g = 1.0
+        phasic_g = 1.0
+    elif args.modulation == 1:
+        assert(args.activation == 1)
+        tonic_g = args.tanh_tonic
+        phasic_g = args.tanh_phasic
+    elif args.modulation == 2:
+        tonic_g = args.input_tonic
+        phasic_g = args.input_phasic
+    else:
+        print("invalid modulation")
+
     g = torch.ones(args.num_processes, 1)*tonic_g
+    g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
-    # next_xxx to calculate next value and update mode
-    next_g = torch.ones(args.num_processes,1).to(device) #next g doesn't need update since it has no effect on V
-    next_recurrent_hidden_states = torch.zeros(args.num_processes, actor_critic.recurrent_hidden_state_size).to(device)
-    next_masks = torch.zeros(args.num_processes,1).to(device)
-    next_obs = torch.zeros(args.num_processes, *envs.observation_space.shape).to(device)
+    masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size, tonic_g)
 
     obs = envs.reset()
+    if args.modulation != 2:
+        obs = obs/255
+    else:
+        obs = neuro_activity(obs, g_device)
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -119,14 +131,21 @@ def main():
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
-            # update g
-            with torch.no_grad():
-                next_recurrent_hidden_states.copy_(recurrent_hidden_states)
-                next_masks.copy_(masks)
-                next_obs.copy_(obs)
-                next_value = actor_critic.get_value(next_obs, next_g, next_recurrent_hidden_states, next_masks).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, 0.2)
 
+            if args.modulation != 2:
+                obs = obs/255
+            else:
+                obs = neuro_activity(obs, g_device)
+            
+            #update g
+            with torch.no_grad():
+                masks_device.copy_(masks)
+                next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            g_device.copy_(g)
+
+            if args.log_evaluation:
+                writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
@@ -134,7 +153,7 @@ def main():
                     steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done )
 
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 
         # with torch.no_grad():
         #     next_value = actor_critic.get_value(rollouts.obs[-1],
