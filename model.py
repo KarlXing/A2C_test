@@ -210,7 +210,7 @@ class CNNBase(NNBase):
         else:
             if self.modulation == 1:
                 return self.critic_linear(F.relu(x)), tanh_g(x,g), rnn_hxs
-            elif self.modulation == 0:
+            else:
                 return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
 
 
