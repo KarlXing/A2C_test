@@ -12,15 +12,21 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, modulation, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, modulation, sync, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], activation=activation, modulation = modulation, **base_kwargs)
+            if modulation != 2:
+                self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
+                print("Use no modulation in model")
+            else:
+                self.base = CNNBase2(obs_shape[0], activation=activation, sync = sync, **base_kwargs)
+                print("Use modulaion in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
+            print("Use MLP model")
         else:
             raise NotImplementedError
 
@@ -165,10 +171,9 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, activation, modulation, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, activation, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
-        self.modulation = modulation
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0),
@@ -179,12 +184,14 @@ class CNNBase(NNBase):
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
         if self.activation == 0:
             self.f1 = init_(nn.Linear(9216, hidden_size))
+            print("Use relu activation for f1 layer")
         else:
             init_ = lambda m: init(m,
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
             self.f1 = init_(nn.Linear(9216, hidden_size))
+            print("Use tanh activation for f1 layer")
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -202,17 +209,67 @@ class CNNBase(NNBase):
 
         x = self.f1(x)
 
-        # if self.is_recurrent:
-        #     x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         if self.activation == 0:
             return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs
         else:
-            if self.modulation == 1:
-                return self.critic_linear(F.relu(x)), tanh_g(x,g), rnn_hxs
-            else:
-                return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
+            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
 
+class CNNBase2(NNBase):
+    def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
+        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
+        self.activation = activation
+        self.sync = sync
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain('relu'))
+
+        self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
+        self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
+        self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
+        if self.activation == 0:
+            self.f1 = init_(nn.Linear(9216, hidden_size))
+            print("Use relu activation for f1 layer")
+        else:
+            init_ = lambda m: init(m,
+                nn.init.orthogonal_,
+                lambda x: nn.init.constant_(x, 0),
+                nn.init.calculate_gain('tanh'))
+            self.f1 = init_(nn.Linear(9216, hidden_size))
+            print("Use tanh activation for f1 layer")
+
+        init_ = lambda m: init(m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0))
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.train()
+
+    def forward(self, inputs, g, rnn_hxs, masks):
+        x = F.relu(self.conv1(inputs))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+
+        x = self.f1(x)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        if self.sync:
+            if self.activation == 0:
+                return self.critic_linear(F.relu(x/g)), F.relu(x/g), rnn_hxs
+            else:
+                return self.critic_linear(F.relu(x/g)), torch.tanh(x/g), rnn_hxs
+        else:
+            if self.activation == 0:
+                return self.critic_linear(F.relu(x)), F.relu(x/g), rnn_hxs
+            else:
+                return self.critic_linear(F.relu(x)), torch.tanh(x/g), rnn_hxs
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):

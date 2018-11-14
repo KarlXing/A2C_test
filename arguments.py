@@ -68,19 +68,27 @@ def get_args():
     parser.add_argument('--carl-wrapper', action='store_true',default=False,
                         help='use deepmind wrapper or carl wrapper')
     parser.add_argument('--modulation', type=int, default=0,
-                        help='whether use modulation, 0: no modulation; 1: tanh modulation; 2: input modulation')
-    parser.add_argument('--tanh-tonic', type=float, default=2.0,
+                        help='whether use modulation, 0: no modulation; 1: input modulation; 2: f1 modulation')
+    parser.add_argument('--tanh-f1-tonic', type=float, default=2.0,
                         help='tonic g value for tanh fucntion')
-    parser.add_argument('--tanh-phasic', type=float, default=0.5,
+    parser.add_argument('--tanh-f1-phasic', type=float, default=0.5,
                         help='phasic g value for tanh function')
-    parser.add_argument('--input-tonic', type=float, default=100,
+    parser.add_argument('--neuro-input-tonic', type=float, default=100,
                         help='tonic g value for input')
-    parser.add_argument('--input-phasic', type=float, default=20,
+    parser.add_argument('--neuro-input-phasic', type=float, default=20,
                         help='phasic g value for input')
+    parser.add_argument('--relu-tonic', type=float, default=1.0,
+                        help='tonic g value for relu activation')
+    parser.add_argument('--relu-phasic', type=float, default=0.25,
+                        help='phasic g value for relu activation')
     parser.add_argument('--log-evaluation', action='store_true', default = False,
                         help='whether log evaluations for later analysis of choosing the threshold')
     parser.add_argument('--phasic-threshold', type=float, default=0.2,
                         help='threshold to switch between phasic and tonic modes')
+    parser.add_argument('--input-neuro', type='store_true', default=False,
+                        help='whether use norm or neuro activity form of observation')
+    parser.add_argument('--sync', type='store_true', default=False,
+                        help='only valid in f1 modulation')
 
     args = parser.parse_args()
 
