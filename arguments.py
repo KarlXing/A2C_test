@@ -85,9 +85,9 @@ def get_args():
                         help='whether log evaluations for later analysis of choosing the threshold')
     parser.add_argument('--phasic-threshold', type=float, default=0.2,
                         help='threshold to switch between phasic and tonic modes')
-    parser.add_argument('--input-neuro', type='store_true', default=False,
+    parser.add_argument('--input-neuro', action='store_true', default=False,
                         help='whether use norm or neuro activity form of observation')
-    parser.add_argument('--sync', type='store_true', default=False,
+    parser.add_argument('--sync', action='store_true', default=False,
                         help='only valid in f1 modulation')
 
     args = parser.parse_args()
