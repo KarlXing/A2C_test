@@ -76,7 +76,7 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.modulation,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.modulation, args.sync,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
