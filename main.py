@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode, neuro_activity
+from utils import get_vec_normalize, update_mode, neuro_activity, obs_representation
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
