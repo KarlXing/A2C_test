@@ -83,12 +83,14 @@ def get_args():
                         help='phasic g value for relu activation')
     parser.add_argument('--log-evaluation', action='store_true', default = False,
                         help='whether log evaluations for later analysis of choosing the threshold')
-    parser.add_argument('--phasic-threshold', type=float, default=0.2,
+    parser.add_argument('--phasic-threshold', type=float, default=0.1,
                         help='threshold to switch between phasic and tonic modes')
     parser.add_argument('--input-neuro', action='store_true', default=False,
                         help='whether use norm or neuro activity form of observation')
     parser.add_argument('--sync', action='store_true', default=False,
                         help='only valid in f1 modulation')
+    parser.add_argument('--num-eval-processes', type=int, default=10,
+                        help='how many processes to use in eval model')
 
     args = parser.parse_args()
 
