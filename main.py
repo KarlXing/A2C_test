@@ -133,7 +133,7 @@ def main():
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
-    # episode_rewards = deque(maxlen=10)
+    episode_rewards = deque(maxlen=10)
 
     start = time.time()
     for j in range(num_updates):
@@ -153,7 +153,7 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, args.input_neuro, g_device)
+            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro, )
 
             #update g
             with torch.no_grad():
