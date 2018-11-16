@@ -264,7 +264,7 @@ def main():
                         eval_episode_rewards.append(info['episode']['r'])
 
             eval_envs.close()
-            print("eval scores are ", eval_episode_rewards)
+            # print("eval scores are ", eval_episode_rewards)
             mean_eval = np.mean(eval_episode_rewards)
             if mean_eval > best_eval:
                 best_eval = mean_eval
