@@ -219,7 +219,7 @@ class CNNBase(NNBase):
 
 class CNNBase2(NNBase):
     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
-        super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
+        super(CNNBase2, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
         self.sync = sync
         init_ = lambda m: init(m,
