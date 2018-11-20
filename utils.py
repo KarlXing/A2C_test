@@ -61,7 +61,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
     evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
     evaluations = evaluations*masks
     for i in range(g.shape[0]):
-        g[i][0] = phasic_g + (tonic_g - phasic_g)*(pow(min(abs(evaluations[i][0]),1),2))
+        g[i][0] = tonic_g - (tonic_g - phasic_g)*(pow(min(abs(evaluations[i][0]),1),2))
         # g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
     return evaluations, g
 

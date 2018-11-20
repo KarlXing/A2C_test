@@ -118,7 +118,8 @@ def main():
             phasic_g = args.tanh_f1_phasic
     else:
         print("invalid modulation")
-
+    print("tonic g is: ", tonic_g)
+    print("phasic g is: ", phasic_g)
     g = torch.ones(args.num_processes, 1)*tonic_g
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
