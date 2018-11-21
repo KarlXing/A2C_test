@@ -91,6 +91,10 @@ def get_args():
                         help='only valid in f1 modulation')
     parser.add_argument('--num-eval-processes', type=int, default=10,
                         help='how many processes to use in eval model')
+    parser.add_argument('--saved-model', default=None,
+                        help='the path of the saved model')
+    parser.add_argument('--stats-path', default=None,
+                        help='the path to the evaluations results')
 
     args = parser.parse_args()
 
