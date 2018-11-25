@@ -124,6 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
+    threshold = torch.ones(args.num_processes, 1)*args.phasic_threshold
+    num_tonic = torch.ones(args.num_processes)  # the initial state is in tonic mode
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
@@ -160,7 +162,8 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            threshold = update_threshold(threshold, num_tonic, j*args.num_steps+step, args.tonic_ratio, args.threshold_mutate_step)
+            evaluations, g, num_tonic = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, num_tonic)
             if args.modulation != 0:
                 g_device.copy_(g)
 
@@ -238,10 +241,13 @@ def main():
             eval_g = torch.ones(args.num_eval_processes, 1)*tonic_g
             eval_g_device = torch.ones(args.num_eval_processes, 1, device=device)*tonic_g
             eval_evaluations = torch.zeros(args.num_eval_processes, 1)
+            eval_threshold = torch.ones(args.num_eval_processes, 1)*args.phasic_threshold
+            eval_num_tonic = torch.ones(args.num_eval_processes)
             obs = eval_envs.reset()
             obs = obs_representation(obs, args.modulation, eval_g_device, args.input_neuro)
-
+            eval_step = 0
             while len(eval_episode_rewards) < 10:
+                eval_step += 1
                 with torch.no_grad():
                     value, action, _, eval_recurrent_hidden_states = actor_critic.act(
                         obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device, deterministic=True)
@@ -256,14 +262,15 @@ def main():
                 with torch.no_grad():
                     eval_masks_device.copy_(eval_masks)
                     next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
-                eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold)
+                eval_threshold = update_threshold(eval_threshold, eval_num_tonic, eval_step, args.tonic_ratio, args.threshold_mutate_step)
+                eval_evaluations, eval_g, eval_num_tonic = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, eval_threshold, eval_num_tonic)
                 if args.modulation != 0:
                     eval_g_device.copy_(eval_g)
 
                 for info in infos:
                     if 'episode' in info.keys():
                         eval_episode_rewards.append(info['episode']['r'])
-
+            writer.add_scalar('data/eval_tonics', np.mean(eval_num_tonic.numpy())/eval_step)
             eval_envs.close()
             # print("eval scores are ", eval_episode_rewards)
             mean_eval = np.mean(eval_episode_rewards)
