@@ -67,6 +67,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     best_eval = 0
+    num_eval = 0
 
     if args.vis:
         from visdom import Visdom
@@ -222,6 +223,7 @@ def main():
 
         if (args.eval_interval is not None
                 and j % args.eval_interval == 0):
+            num_eval += 1
             eval_envs = make_vec_envs(
                 args.env_name, args.seed + args.num_eval_processes, args.num_eval_processes,
                 args.gamma, eval_log_dir, args.add_timestep, device, True, 4, args.carl_wrapper)
@@ -270,7 +272,7 @@ def main():
                 for info in infos:
                     if 'episode' in info.keys():
                         eval_episode_rewards.append(info['episode']['r'])
-            writer.add_scalar('data/eval_tonics', np.mean(eval_num_tonic.numpy())/eval_step)
+            writer.add_scalar('data/eval_tonics', np.mean(eval_num_tonic.numpy())/eval_step, num_eval)
             eval_envs.close()
             # print("eval scores are ", eval_episode_rewards)
             mean_eval = np.mean(eval_episode_rewards)
