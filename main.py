@@ -166,6 +166,8 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                if done[0]:
+                    writer.add_scalar('analysis/done', j*args.num_steps + step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
