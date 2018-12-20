@@ -55,14 +55,21 @@ def tanh_g(x,g):
     x = x/g
     return torch.tanh(x)
 
-def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
+def sigmoid(x):
+    return 1.0/(1+np.exp(-x))
+
+def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, mean_evaluations):
     value = value.cpu()
     next_value = next_value.cpu()
     evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
     evaluations = evaluations*masks
-    for i in range(g.shape[0]):
-        # g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
-        g[i][0] = tonic_g + (phasic_g-tonic_g)*(pow(min(abs(evaluations[i][0]),1),10))
+    evaluations_mode = (evaluations-mean_evaluations)*(10/abs(mean_evaluations))
+    evaluations_mode = sigmoid(evaluations_mode)
+    g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
+
+    # for i in range(g.shape[0]):
+    #     # g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
+    #     g[i][0] = tonic_g + (phasic_g-tonic_g)*(pow(min(abs(evaluations[i][0]),1),10))
     return evaluations, g
 
 def neuro_activity(obs, g, mid = 128):

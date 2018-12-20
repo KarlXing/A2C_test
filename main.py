@@ -124,6 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
+    mean_evaluations = torch.zeros(args.num_processes, 1)
+
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
@@ -137,9 +139,11 @@ def main():
     episode_rewards = deque(maxlen=10)
 
     start = time.time()
+    glob_step = 0
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
+            glob_step += 1
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
@@ -160,7 +164,8 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, mean_evaluations)
+            mean_evaluations = (mean_evaluations*(glob_step-1)+evaluations)/glob_step
             if args.modulation != 0:
                 g_device.copy_(g)
 
