@@ -124,7 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
-    mean_evaluations = torch.zeros(args.num_processes, 1)
+    mean_evaluations = 0
+    max_mean_evaluations = 0
 
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -158,14 +159,15 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro, )
+            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
 
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, mean_evaluations)
-            mean_evaluations = (mean_evaluations*(glob_step-1)+abs(evaluations))/glob_step
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, max_mean_evaluations)
+            mean_evaluations = (mean_evaluations*(glob_step-1)+torch.mean(abs(evaluations)))/glob_step
+            max_mean_evaluations = torch.max(max_mean_evaluations, mean_evaluations)
             if args.modulation != 0:
                 g_device.copy_(g)
 
