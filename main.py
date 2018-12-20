@@ -124,6 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
+    mean_evaluations = torch.zeros(args.num_processes, 1)
+
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
@@ -137,9 +139,11 @@ def main():
     episode_rewards = deque(maxlen=10)
 
     start = time.time()
+    glob_step = 0
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
+            glob_step += 1
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states = actor_critic.act(
                         rollouts.obs[step],
@@ -160,12 +164,14 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, mean_evaluations)
+            mean_evaluations = (mean_evaluations*(glob_step-1)+abs(evaluations))/glob_step
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                writer.add_scalar('analysis/mean_evaluations', mean_evaluations[0], glob_step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
@@ -238,10 +244,13 @@ def main():
             eval_g = torch.ones(args.num_eval_processes, 1)*tonic_g
             eval_g_device = torch.ones(args.num_eval_processes, 1, device=device)*tonic_g
             eval_evaluations = torch.zeros(args.num_eval_processes, 1)
+            eval_mean_evaluations = torch.zeros(args.num_eval_processes, 1)
             obs = eval_envs.reset()
             obs = obs_representation(obs, args.modulation, eval_g_device, args.input_neuro)
 
+            eval_step = 0
             while len(eval_episode_rewards) < 10:
+                eval_step += 1
                 with torch.no_grad():
                     value, action, _, eval_recurrent_hidden_states = actor_critic.act(
                         obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device, deterministic=True)
@@ -253,12 +262,13 @@ def main():
                 eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                                 for done_ in done])
                 #update eval_g
-                with torch.no_grad():
-                    eval_masks_device.copy_(eval_masks)
-                    next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
-                eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold)
-                if args.modulation != 0:
-                    eval_g_device.copy_(eval_g)
+                # with torch.no_grad():
+                #     eval_masks_device.copy_(eval_masks)
+                #     next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
+                # eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold, eval_mean_evaluations)
+                # eval_mean_evaluations = (eval_mean_evaluations*(eval_step-1)+eval_evaluations)/eval_step
+                # if args.modulation != 0:
+                #     eval_g_device.copy_(eval_g)
 
                 for info in infos:
                     if 'episode' in info.keys():
