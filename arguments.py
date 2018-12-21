@@ -95,6 +95,8 @@ def get_args():
                         help='the path of the saved model')
     parser.add_argument('--stats-path', default=None,
                         help='the path to the evaluations results')
+    parser.add_argument('--smooth-weight', type=float, default=0.95,
+                        help='the smooth weight for calculating sigmoid mid point')
 
     args = parser.parse_args()
 
