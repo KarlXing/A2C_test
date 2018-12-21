@@ -124,8 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
-    mean_evaluations = 0
-    max_mean_evaluations = 0
+    smooth_evaluations = 0
+    max_smooth_evaluations = 0
 
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -165,15 +165,15 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, max_mean_evaluations)
-            mean_evaluations = (mean_evaluations*(glob_step-1)+torch.mean(abs(evaluations)))/glob_step
-            max_mean_evaluations = torch.max(max_mean_evaluations, mean_evaluations)
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, max_smooth_evaluations)
+            smooth_evaluations = args.smooth_weight*smooth_evaluations + (1 - args.smooth_weight)*torch.mean(abs(evaluations))
+            max_smooth_evaluations = torch.max(max_smooth_evaluations, smooth_evaluations)
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
-                writer.add_scalar('analysis/evaluations', evaluations, j*args.num_steps + step)
-                writer.add_scalar('analysis/mean_evaluations', mean_evaluations, glob_step)
+                # writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                writer.add_scalar('analysis/smooth_evaluations', smooth_evaluations, glob_step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
