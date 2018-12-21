@@ -124,8 +124,8 @@ def main():
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
-    smooth_evaluations = torch.tensor(0)
-    max_smooth_evaluations = torch.tensor(0)
+    smooth_evaluations = torch.tensor(0.0)
+    max_smooth_evaluations = torch.tensor(0.0)
 
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
