@@ -125,7 +125,7 @@ def main():
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
     smooth_evaluations = torch.tensor(0.0)
-    max_smooth_evaluations = torch.tensor(0.0)
+    #max_smooth_evaluations = torch.tensor(0.0)
 
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -165,9 +165,9 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, max_smooth_evaluations)
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, smooth_evaluations)
             smooth_evaluations = args.smooth_weight*smooth_evaluations + (1 - args.smooth_weight)*torch.mean(abs(evaluations))
-            max_smooth_evaluations = torch.max(max_smooth_evaluations, smooth_evaluations)
+            #max_smooth_evaluations = torch.max(max_smooth_evaluations, smooth_evaluations)
             if args.modulation != 0:
                 g_device.copy_(g)
 
