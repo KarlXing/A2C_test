@@ -94,3 +94,7 @@ def obs_representation(obs, modulation, g_device, input_neuro):
     else:  # f1 modulation
         obs = obs/255
     return obs
+
+def update_rewards_set(rewards_set, rewards):
+    rewards_set |= set(rewards.cpu().numpy().flatten().tolist())
+    return rewards_set

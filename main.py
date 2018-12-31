@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode, neuro_activity, obs_representation
+from utils import get_vec_normalize, update_mode, neuro_activity, obs_representation, update_rewards_set
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -67,6 +67,7 @@ def main():
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
     best_eval = 0
+    all_rewards = set()
 
     if args.vis:
         from visdom import Visdom
@@ -155,6 +156,7 @@ def main():
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+            all_rewards = update_rewards_set(all_rewards, reward)
 
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
@@ -302,6 +304,7 @@ def main():
             except IOError:
                 pass
     print("best eval score is ", best_eval)
+    print("all rewards :", all_rewards)
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()
 
