@@ -167,15 +167,17 @@ def main():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
             evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, mean_evaluations)
-            mean_evaluations = (mean_evaluations*(glob_step-1)+torch.mean(abs(evaluations)))/glob_step
+            #mean_evaluations = (mean_evaluations*(glob_step-1)+torch.mean(abs(evaluations)))/glob_step
             #smooth_evaluations = args.smooth_weight*smooth_evaluations + (1 - args.smooth_weight)*torch.mean(abs(evaluations))
             #max_smooth_evaluations = torch.max(max_smooth_evaluations, smooth_evaluations)
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
-                # writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
-                writer.add_scalar('analysis/mean_evaluations', mean_evaluations, glob_step)
+                writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                if done[0]:
+                    writer.add_scalar('analysis/done', 1, j*args.num_steps+step)
+                # writer.add_scalar('analysis/mean_evaluations', mean_evaluations, glob_step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
