@@ -170,6 +170,11 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                for i in range(args.num_processes):
+                    if done[i]:
+                        writer.add_scalar('analysis/done', i, j*args.num_steps + step)
+                writer.add_scalar('analysis/train_tonics', np.mean(num_tonic.numpy())/(j*args.num_steps + step), j*args.num_steps + step)
+
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
@@ -258,21 +263,21 @@ def main():
                 obs, reward, done, infos = eval_envs.step(action)
                 obs = obs_representation(obs, args.modulation, eval_g_device, args.input_neuro)
 
-                eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
-                                                for done_ in done])
-                #update eval_g
-                with torch.no_grad():
-                    eval_masks_device.copy_(eval_masks)
-                    next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
-                eval_threshold = update_threshold(eval_threshold, eval_num_tonic, eval_step, args.tonic_ratio, args.threshold_mutate_step)
-                eval_evaluations, eval_g, eval_num_tonic = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, eval_threshold, eval_num_tonic)
-                if args.modulation != 0:
-                    eval_g_device.copy_(eval_g)
+                # eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                #                                 for done_ in done])
+                # #update eval_g
+                # with torch.no_grad():
+                #     eval_masks_device.copy_(eval_masks)
+                #     next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
+                # eval_threshold = update_threshold(eval_threshold, eval_num_tonic, eval_step, args.tonic_ratio, args.threshold_mutate_step)
+                # eval_evaluations, eval_g, eval_num_tonic = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, eval_threshold, eval_num_tonic)
+                # if args.modulation != 0:
+                #     eval_g_device.copy_(eval_g)
 
                 for info in infos:
                     if 'episode' in info.keys():
                         eval_episode_rewards.append(info['episode']['r'])
-            writer.add_scalar('data/eval_tonics', np.mean(eval_num_tonic.numpy())/eval_step, num_eval)
+            #writer.add_scalar('data/eval_tonics', np.mean(eval_num_tonic.numpy())/eval_step, num_eval)
             eval_envs.close()
             # print("eval scores are ", eval_episode_rewards)
             mean_eval = np.mean(eval_episode_rewards)
