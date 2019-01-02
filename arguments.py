@@ -95,7 +95,7 @@ def get_args():
                         help='the path of the saved model')
     parser.add_argument('--stats-path', default=None,
                         help='the path to the evaluations results')
-    parser.add_argument('--tonic-ratio', type=float, default=0.3,
+    parser.add_argument('--tonic-ratio', type=float, default=0.2,
                         help='the ratio of tonic mode in all steps')
     parser.add_argument('--threshold-mutate-step', type=float, default=0.05,
                         help='the mutation step size for adaptive threshold')
