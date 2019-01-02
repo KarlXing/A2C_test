@@ -166,14 +166,16 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
-                if done[0]:
-                    writer.add_scalar('analysis/done', j*args.num_steps + step)
+                for i in range(args.num_processes):
+                    if done[i]:
+                        writer.add_scalar('analysis/done', i, j*args.num_steps + step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
                     episode_rewards.append(info['episode']['r'])
                     steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
-                    writer.add_scalar('data/reward', info['episode']['r'], steps_done )
+                    writer.add_scalar('data/reward', info['episode']['r'], steps_done)
+                    writer.add_scalar('data/process', idx, steps_done)
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 
