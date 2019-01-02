@@ -180,7 +180,7 @@ def main():
                     if done[i]:
                         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
                 writer.add_scalar('analysis/train_tonics', np.mean(num_tonic.numpy())/(j*args.num_steps + step), j*args.num_steps + step)
-                writer.add_scalar('analysis/ratio', ratio, total_step)
+                writer.add_scalar('analysis/threshold', threshold[0], total_step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
