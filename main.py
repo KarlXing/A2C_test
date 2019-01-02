@@ -127,6 +127,9 @@ def main():
     masks_device = torch.ones(args.num_processes, 1).to(device)
     threshold = torch.ones(args.num_processes, 1)*args.phasic_threshold
     num_tonic = torch.ones(args.num_processes)  # the initial state is in tonic mode
+    target_ratio = args.tonic_ratio
+    init_ratio = 1.0
+    ratio = init_ratio
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
@@ -157,16 +160,19 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro, )
+            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
 
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            threshold = update_threshold(threshold, num_tonic, j*args.num_steps+step, args.tonic_ratio, args.threshold_mutate_step)
+            threshold = update_threshold(threshold, num_tonic, j*args.num_steps+step, ratio, args.threshold_mutate_step)
             evaluations, g, num_tonic = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, num_tonic)
             if args.modulation != 0:
                 g_device.copy_(g)
+
+            total_step = j*args.num_steps + step
+            ratio = target_ratio + (init_ratio - target_ratio)* math.exp(-1. * total_step / 100000)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
@@ -174,7 +180,7 @@ def main():
                     if done[i]:
                         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
                 writer.add_scalar('analysis/train_tonics', np.mean(num_tonic.numpy())/(j*args.num_steps + step), j*args.num_steps + step)
-
+                writer.add_scalar('analysis/ratio', ratio, total_step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
