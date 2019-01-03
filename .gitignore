@@ -102,3 +102,7 @@ venv.bak/
 
 trained_models/
 .fuse_hidden*
+Breakout/
+Result/
+NewResult/
+runs/
