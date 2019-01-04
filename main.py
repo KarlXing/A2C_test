@@ -164,7 +164,7 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            threshold = update_threshold(threshold, num_tonic, j*args.num_steps+step, target_ratio, args.threshold_mutate_step)
+            threshold = update_threshold(threshold, num_tonic, j*args.num_steps+step+1, target_ratio, args.threshold_mutate_step)
             evaluations, g, num_tonic = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, num_tonic)
             if args.modulation != 0:
                 g_device.copy_(g)
