@@ -61,7 +61,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
     evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
     evaluations = evaluations*masks
     for i in range(g.shape[0]):
-        if abs(evaluations[i][0]) < threshold[i][0]:
+        if evaluations[i][0] > threshold[i][0]:
             g[i][0] = tonic_g
             num_tonic[i] += 1
         else:
@@ -95,5 +95,5 @@ def obs_representation(obs, modulation, g_device, input_neuro):
 def update_threshold(threshold, num_tonic, steps, tonic_ratio, mutation_step):
     assert(threshold.shape[0] == num_tonic.shape[0])
     for i in range(threshold.shape[0]):
-        threshold[i][0] = max(0, threshold[i][0]+ mutation_step*(tonic_ratio-num_tonic[i]/steps))
+        threshold[i][0] = max(0, threshold[i][0]- mutation_step*(tonic_ratio-num_tonic[i]/steps))
     return threshold
