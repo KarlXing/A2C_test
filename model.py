@@ -262,14 +262,14 @@ class CNNBase2(NNBase):
 
         if self.sync:
             if self.activation == 0:
-                return self.critic_linear(F.relu(x/g)), F.relu(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x*g)), F.relu(x*g), rnn_hxs
             else:
-                return self.critic_linear(F.relu(x/g)), torch.tanh(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x*g)), torch.tanh(x*g), rnn_hxs
         else:
             if self.activation == 0:
-                return self.critic_linear(F.relu(x)), F.relu(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x)), F.relu(x*g), rnn_hxs
             else:
-                return self.critic_linear(F.relu(x)), torch.tanh(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x)), torch.tanh(x*g), rnn_hxs
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):

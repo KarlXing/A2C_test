@@ -123,6 +123,7 @@ def main():
     g = torch.ones(args.num_processes, 1)*tonic_g
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
+    process_rewards = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -149,18 +150,27 @@ def main():
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-
+            process_rewards = process_rewards + reward
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro, )
-
+            
+            for idx in range(len(infos)):
+                info = infos[idx]
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+                    steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
+                    writer.add_scalar('data/reward', info['episode']['r'], steps_done)
+                    process_rewards[idx][0] = 0.0
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            evaluations, _ = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            g = update_g(tonic_g, phasic_g, process_rewards, episode_rewards)
+
             if args.modulation != 0:
                 g_device.copy_(g)
 
@@ -171,12 +181,7 @@ def main():
                 # for i in range(args.num_processes):
                 #     if done[i]:
                 #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
-            for idx in range(len(infos)):
-                info = infos[idx]
-                if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
-                    steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
-                    writer.add_scalar('data/reward', info['episode']['r'], steps_done)
+
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 

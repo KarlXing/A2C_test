@@ -60,9 +60,15 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
     next_value = next_value.cpu()
     evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
     evaluations = evaluations*masks
-    for i in range(g.shape[0]):
-        g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
+    # for i in range(g.shape[0]):
+    #     g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
     return evaluations, g
+
+
+def update_g(tonic_g, phasic_g, process_rewards, episode_rewards):
+    g = phasic_g - (process_rewards/np.mean(episode_rewards))*(phasic_g - tonic_g)
+    g = max(min(g, phasic_g), tonic_g)
+    return g
 
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
