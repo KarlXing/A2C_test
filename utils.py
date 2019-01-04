@@ -67,9 +67,13 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 
 
 def update_g(tonic_g, phasic_g, process_rewards, episode_rewards):
-    g = phasic_g - (process_rewards/np.mean(episode_rewards).item())*(phasic_g - tonic_g)
-    for i in range(g.shape[0]):
-        g[i][0] = max(min(g[i][0], phasic_g), tonic_g)
+    if len(episode_rewards) == 0:
+        return torch.ones(process_rewards.shape[0], 1)*tonic_g
+    mean_reward = np.mean(episode_rewards)
+    if mean_reward == 0:
+        return torch.ones(process_rewards.shape[0], 1)*tonic_g
+    g = phasic_g - (process_rewards/mean_reward)*(phasic_g - tonic_g)
+    g.clamp_(tonic_g, phasic_g)
     return g
 
 def neuro_activity(obs, g, mid = 128):
