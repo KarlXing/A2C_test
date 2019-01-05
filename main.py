@@ -160,10 +160,8 @@ def main():
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
-                    steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
-                    writer.add_scalar('data/reward', info['episode']['r'], steps_done)
                     process_rewards[idx][0] = 0.0
+
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
@@ -182,6 +180,12 @@ def main():
                 #     if done[i]:
                 #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
 
+            for idx in range(len(infos)):
+                info = infos[idx]
+                if 'episode' in info.keys():
+                    episode_rewards.append(info['episode']['r'])
+                    steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
+                    writer.add_scalar('data/reward', info['episode']['r'], steps_done)
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 
