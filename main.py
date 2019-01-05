@@ -176,6 +176,7 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                writer.add_scalar('analysis/smooth_error', smooth_error, j*args.num_steps + step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, j*args.num_steps+step)
                 # writer.add_scalar('analysis/mean_evaluations', mean_evaluations, glob_step)
