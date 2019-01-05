@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 from envs import VecNormalize
 
@@ -59,7 +60,7 @@ def calc_g(evaluation, phasic_g, tonic_g, mean_pos_pderror, mean_neg_pderror):
     if evaluation > 0:
         return min((1 + evaluation/mean_pos_pderror), phasic_g) if mean_pos_pderror > 0 else 1
     elif evaluation < 0:
-        return max((1 - evaluation/mean_neg_pderror), tonic_g) if negative_pderror < 0 else 1
+        return max((1 - evaluation/mean_neg_pderror), tonic_g) if mean_neg_pderror < 0 else 1
     else:
         return 1
 
