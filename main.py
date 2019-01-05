@@ -260,13 +260,13 @@ def main():
 
                 eval_masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                                 for done_ in done])
-                #update eval_g
-                with torch.no_grad():
-                    eval_masks_device.copy_(eval_masks)
-                    next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
-                eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold)
-                if args.modulation != 0:
-                    eval_g_device.copy_(eval_g)
+                # #update eval_g
+                # with torch.no_grad():
+                #     eval_masks_device.copy_(eval_masks)
+                #     next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
+                # eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold)
+                # if args.modulation != 0:
+                #     eval_g_device.copy_(eval_g)
 
                 for info in infos:
                     if 'episode' in info.keys():
