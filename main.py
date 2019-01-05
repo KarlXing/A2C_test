@@ -135,6 +135,9 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
+    negative_pderror = deque(maxlen=10000)
+    positive_pderror = deque(maxlen=10000)
+
 
     start = time.time()
     for j in range(num_updates):
@@ -160,7 +163,7 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+            evaluations, g, positive_pderror, negative_pderror = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, positive_pderror, negative_pderror)
             if args.modulation != 0:
                 g_device.copy_(g)
 

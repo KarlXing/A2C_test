@@ -55,14 +55,30 @@ def tanh_g(x,g):
     x = x/g
     return torch.tanh(x)
 
-def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold):
+def calc_g(evaluation, phasic_g, tonic_g, mean_pos_pderror, mean_neg_pderror):
+    if evaluation > 0:
+        return min((1 + evaluation/mean_pos_pderror), phasic_g) if mean_pos_pderror > 0 else 1
+    elif evaluation < 0:
+        return max((1 - evaluation/mean_neg_pderror), tonic_g) if negative_pderror < 0 else 1
+    else:
+        return 1
+
+def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, positive_pderror, negative_pderror):
     value = value.cpu()
     next_value = next_value.cpu()
-    evaluations = 0.5*evaluations + 0.5*(reward-value+next_value)
+    pderror = reward-value+next_value
+    for i in range(pderror.shape[0]):
+        if pderror[i][0] > 0:
+            positive_pderror.append(pderror[i][0])
+        elif pderror[i][0] < 0:
+            negative_pderror.append(pderror[i][0])
+    evaluations = 0.75*evaluations + 0.25*pderror
     evaluations = evaluations*masks
+    mean_pos_pderror = np.mean(positive_pderror).item() if len(positive_pderror) > 0 else 0
+    mean_neg_pderror = np.mean(negative_pderror).item() if len(negative_pderror) > 0 else 0
     for i in range(g.shape[0]):
-        g[i][0] = tonic_g if evaluations[i][0] > threshold else phasic_g
-    return evaluations, g
+        g[i][0] = calc_g(evaluations[i], phasic_g, tonic_g, mean_pos_pderror, mean_neg_pderror)
+    return evaluations, g, positive_pderror, negative_pderror
 
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
