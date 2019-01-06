@@ -26,7 +26,7 @@ class RolloutStorage(object):
 
         self.num_steps = num_steps
         self.step = 0
-        self.g_eval = torch.ones(num_processes, 1)
+        self.g_eval = torch.ones(num_steps+1, num_processes, 1)
 
     def to(self, device):
         self.obs = self.obs.to(device)
