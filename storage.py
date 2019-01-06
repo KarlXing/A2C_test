@@ -26,6 +26,7 @@ class RolloutStorage(object):
 
         self.num_steps = num_steps
         self.step = 0
+        self.g_eval = torch.ones(num_processes, 1)
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -37,6 +38,7 @@ class RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
+        self.g_eval = self.g_eval.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, g):
         self.obs[self.step + 1].copy_(obs)
