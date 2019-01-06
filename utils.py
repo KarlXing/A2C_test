@@ -65,7 +65,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
     pderror = reward-value+next_value
     evaluations = 0.75*evaluations + 0.25*pderror
     evaluations = evaluations*masks
-    evaluations_mode = (evaluations-smooth_error)*(5/smooth_error)
+    evaluations_mode = -(evaluations-smooth_error)*(5/smooth_error)
     evaluations_mode = sigmoid(evaluations_mode)
     g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
 
