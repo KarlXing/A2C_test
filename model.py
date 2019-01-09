@@ -52,7 +52,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, g, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, g, rnn_hxs, masks)
+        value, actor_features, rnn_hxs, x = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -63,14 +63,14 @@ class Policy(nn.Module):
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action, action_log_probs, rnn_hxs
+        return value, action, action_log_probs, rnn_hxs, x[0].max(), x[0].mean(), dist.entropy()[0]
 
     def get_value(self, inputs, g, rnn_hxs, masks):
-        value, _, _ = self.base(inputs, g, rnn_hxs, masks)
+        value, _, _, _ = self.base(inputs, g, rnn_hxs, masks)
         return value
 
     def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(inputs, g, rnn_hxs, masks)
+        value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -213,9 +213,9 @@ class CNNBase(NNBase):
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         if self.activation == 0:
-            return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs
+            return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs, x
         else:
-            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs
+            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs, x
 
 class CNNBase2(NNBase):
     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
@@ -262,14 +262,14 @@ class CNNBase2(NNBase):
 
         if self.sync:
             if self.activation == 0:
-                return self.critic_linear(F.relu(x/g)), F.relu(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x/g)), F.relu(x/g), rnn_hxs, x
             else:
-                return self.critic_linear(F.relu(x/g)), torch.tanh(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x/g)), torch.tanh(x/g), rnn_hxs, x
         else:
             if self.activation == 0:
-                return self.critic_linear(F.relu(x)), F.relu(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x)), F.relu(x/g), rnn_hxs, x
             else:
-                return self.critic_linear(F.relu(x)), torch.tanh(x/g), rnn_hxs
+                return self.critic_linear(F.relu(x)), torch.tanh(x/g), rnn_hxs, x
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
