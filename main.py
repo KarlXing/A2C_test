@@ -100,15 +100,8 @@ def main():
     else:
         print("use neuro activity of input")
     if args.modulation == 0:
-        tonic_g = args.neuro_input_tonic
-        phasic_g = args.neuro_input_phasic
-    elif args.modulation == 1:
-        if args.input_neuro:
-            tonic_g = args.neuro_input_tonic
-            phasic_g = args.neuro_input_phasic
-        else:
-            tonic_g = args.relu_tonic
-            phasic_g = args.relu_phasic
+        tonic_g = 1.0
+        phasic_g = 1.0
     elif args.modulation == 2:
         if args.activation == 0:
             tonic_g = args.relu_tonic
@@ -135,7 +128,7 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-
+    mean_error = torch.tensor(0.0)
     start = time.time()
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -159,13 +152,16 @@ def main():
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
-                next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold)
+                next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
+            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, mean_error)
+            mean_error = 0.99 * mean_error + 0.01*(abs(evaluations).mean())
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], j*args.num_steps + step)
+                writer.add_scalar('analysis/g', g[0], j*args.num_steps + step)
+                writer.add_scalar('analysis/mean_error', mean_error, j*args.num_steps + step)
                 if done[0]:
                     writer.add_scalar('analysis/done', j*args.num_steps + step)
                 # for i in range(args.num_processes):
@@ -177,6 +173,7 @@ def main():
                     episode_rewards.append(info['episode']['r'])
                     steps_done = j*args.num_steps*args.num_processes + step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
+                    writer.add_scalar('data/avg_reward', np.mean(episode_rewards), steps_done)
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 
@@ -260,8 +257,8 @@ def main():
                 #update eval_g
                 with torch.no_grad():
                     eval_masks_device.copy_(eval_masks)
-                    next_value = actor_critic.get_value(obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device).detach()
-                eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, args.phasic_threshold)
+                    next_value = actor_critic.get_value(obs, eval_recurrent_hidden_states, eval_masks_device).detach()
+                eval_evaluations, eval_g = update_mode(eval_evaluations, eval_masks, reward, value, next_value, tonic_g, phasic_g, eval_g, mean_error)
                 if args.modulation != 0:
                     eval_g_device.copy_(eval_g)
 
