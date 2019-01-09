@@ -130,6 +130,7 @@ def main():
     episode_rewards = deque(maxlen=10)
     mean_error = torch.tensor(0.0)
     start = time.time()
+    x_features = {}
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -167,13 +168,13 @@ def main():
                 writer.add_scalar('analysis/xmean', xmean.cpu(), j*args.num_steps + step)
                 writer.add_scalar('analysis/entropy', dist_entropy.cpu(), j*args.num_steps + step)
                 if done[0]:
-                    writer.add_scalar('analysis/done', j*args.num_steps + step)
+                    writer.add_scalar('analysis/done', 1, j*args.num_steps + step)
                 # for i in range(args.num_processes):
                 #     if done[i]:
                 #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
                 if j % 10 == 0 and step % 5 == 0:
-                    x_dict = dict(zip(range(512), x.cpu().numpy()))
-                    writer.add_scalars('analysis/features', x_dict, j*args.num_steps + step)
+                    x_features[j*args.num_steps + step] = x
+                    torch.save(x_features, "features.pb")
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
