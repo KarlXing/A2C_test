@@ -134,7 +134,7 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmax, xmean, dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, x, xmax, xmean, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
@@ -170,6 +170,9 @@ def main():
                 # for i in range(args.num_processes):
                 #     if done[i]:
                 #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
+                if j % 10 == 0 and step % 5 == 0:
+                    x_dict = dict(zip(range(512), x.cpu().numpy()))
+                    writer.add_scalars('analysis/features', x_dict, j*args.num_steps + step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
@@ -248,7 +251,7 @@ def main():
 
             while len(eval_episode_rewards) < 10:
                 with torch.no_grad():
-                    value, action, _, eval_recurrent_hidden_states = actor_critic.act(
+                    value, action, _, eval_recurrent_hidden_states, _, _, _ , _= actor_critic.act(
                         obs, eval_g_device, eval_recurrent_hidden_states, eval_masks_device, deterministic=True)
 
                 # Obser reward and next obs
