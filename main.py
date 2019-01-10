@@ -167,7 +167,7 @@ def main():
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 writer.add_scalar('analysis/g', g[0], g_step)
-                writer.add_scalar('analysis/mean_error', mean_error, g_step)
+                writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
                 writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
                 writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
                 writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
