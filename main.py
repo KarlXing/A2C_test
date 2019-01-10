@@ -133,14 +133,13 @@ def main():
     episode_rewards = deque(maxlen=10)
     mean_evaluation = torch.tensor(0.0)
     start = time.time()
-    x_features = {}
     g_step = 0
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, x, xmin, xmax, xmean, dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
@@ -177,9 +176,6 @@ def main():
                 # for i in range(args.num_processes):
                 #     if done[i]:
                 #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
-                if j % 10 == 0 and step % 5 == 0:
-                    x_features[j*args.num_steps + step] = x
-                    torch.save(x_features, "features.pb")
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
