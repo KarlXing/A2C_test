@@ -69,17 +69,17 @@ def get_args():
                         help='use deepmind wrapper or carl wrapper')
     parser.add_argument('--modulation', type=int, default=0,
                         help='whether use modulation, 0: no modulation; 1: input modulation; 2: f1 modulation')
-    parser.add_argument('--tanh-f1-tonic', type=float, default=2.0,
+    parser.add_argument('--tanh-f1-tonic', type=float, default=0.5,
                         help='tonic g value for tanh fucntion')
-    parser.add_argument('--tanh-f1-phasic', type=float, default=0.5,
+    parser.add_argument('--tanh-f1-phasic', type=float, default=2.0,
                         help='phasic g value for tanh function')
     parser.add_argument('--neuro-input-tonic', type=float, default=100,
                         help='tonic g value for input')
     parser.add_argument('--neuro-input-phasic', type=float, default=20,
                         help='phasic g value for input')
-    parser.add_argument('--relu-tonic', type=float, default=1.0,
+    parser.add_argument('--relu-tonic', type=float, default=0.5,
                         help='tonic g value for relu activation')
-    parser.add_argument('--relu-phasic', type=float, default=0.25,
+    parser.add_argument('--relu-phasic', type=float, default=2.0,
                         help='phasic g value for relu activation')
     parser.add_argument('--log-evaluation', action='store_true', default = False,
                         help='whether log evaluations for later analysis of choosing the threshold')

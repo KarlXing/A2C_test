@@ -306,7 +306,7 @@ def wrap_carl(env, episode_life=True, scale_rewards = True, clip_rewards=False, 
         env = ScaleRewardEnv(env)
     return env
 
-def wrap_carl_new(env, episode_life=True, scale_rewards = False, clip_rewards=False, frame_stack=False, scale=False):
+def wrap_carl_new(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
     """Configure environment for DeepMind-style Atari with scale rewards
     """
     if episode_life:
