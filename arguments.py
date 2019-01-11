@@ -95,6 +95,12 @@ def get_args():
                         help='the path of the saved model')
     parser.add_argument('--stats-path', default=None,
                         help='the path to the evaluations results')
+    parser.add_argument('--sigmoid-range', type=float, default=5.0,
+                        help='the sigmoid curve parameter')
+    parser.add_argument('--natural-value', action='store_true', default=False,
+                        help='remove abstract of evaluations')
+    parser.add_argument('--sigmoid', action='store_true', default=False,
+                        help='use sigmoid for g update')
 
     args = parser.parse_args()
 

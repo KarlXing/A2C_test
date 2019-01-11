@@ -66,7 +66,7 @@ def main():
     writer = SummaryWriter()
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
-    best_eval = 0
+    best_score = 0
 
     if args.vis:
         from visdom import Visdom
@@ -158,13 +158,14 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, mean_evaluation, True)
+            evaluations, g, pd_error = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
             mean_evaluation = ((g_step-1) * mean_evaluation+ abs(evaluations).mean())/g_step
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
+                writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0], g_step)
                 writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
                 writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
@@ -182,7 +183,14 @@ def main():
                     episode_rewards.append(info['episode']['r'])
                     steps_done = g_step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
-                    writer.add_scalar('data/avg_reward', np.mean(episode_rewards), steps_done)
+                    mean_rewards = np.mean(episode_rewards)
+                    writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
+                    if mean_rewards > best_score:
+                        best_score = mean_rewards
+                        save_model = actor_critic
+                        if args.cuda:
+                            save_model = copy.deepcopy(actor_critic).cpu()
+                        torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 

@@ -59,19 +59,26 @@ def tanh_g(x,g):
 def sigmoid(x):
     return 1.0/(1+np.exp(-x))
 
-def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, sigmoid_g):
+def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, threshold, sigmoid_g, sigmoid_range, natural_value):
     value = value.cpu()
     next_value = next_value.cpu()
-    evaluations = 0.75*evaluations + 0.25*(reward-value+next_value)
+    pd_error = reward-value+next_value
+    evaluations = 0.75*evaluations + 0.25*pd_error
     evaluations = evaluations*masks
     if sigmoid_g:
-        evaluations_mode = (abs(evaluations)-threshold)*(3/threshold)
+        if not natural_value:
+            evaluations_mode = (abs(evaluations)-threshold)*(sigmoid_range/threshold)
+        else:
+            evaluations_mode = (evaluations - threshold)*(sigmoid_range/threshold)
         evaluations_mode = sigmoid(evaluations_mode)
         g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
     else:
         for i in range(g.shape[0]):
-            g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
-    return evaluations, g
+            if not natural_value:
+                g[i][0] = phasic_g if abs(evaluations[i][0]) > threshold else tonic_g
+            else:
+                g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
+    return evaluations, g, pd_error
 
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
