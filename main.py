@@ -164,6 +164,7 @@ def main():
                 g_device.copy_(g)
 
             if args.log_evaluation:
+                writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0], g_step)
