@@ -158,8 +158,8 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g, pd_error = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, args.sigmoid, args.sigmoid_range, args.natural_value)
-            mean_evaluation = ((g_step-1) * mean_evaluation+ abs(evaluations).mean())/g_step
+            evaluations, g, pd_error = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
+            mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
             if args.modulation != 0:
                 g_device.copy_(g)
 
