@@ -139,7 +139,7 @@ def main():
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, xa_mean, xc_mean, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
@@ -169,9 +169,8 @@ def main():
                 writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0], g_step)
                 writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
-                writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
-                writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
-                writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
+                writer.add_scalar('analysis/xa_mean', xa_mean.cpu(), g_step)
+                writer.add_scalar('analysis/xc_mean', xc_mean.cpu(), g_step)
                 writer.add_scalar('analysis/entropy', dist_entropy.cpu(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)

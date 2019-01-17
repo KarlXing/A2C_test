@@ -52,7 +52,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, g, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs, x = self.base(inputs, g, rnn_hxs, masks)
+        value, actor_features, rnn_hxs, xa, xc = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -63,14 +63,14 @@ class Policy(nn.Module):
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action, action_log_probs, rnn_hxs, x[0].min(), x[0].max(), x[0].mean(), dist.entropy()[0]
+        return value, action, action_log_probs, rnn_hxs, xa[0].mean(), xc[0].mean(), dist.entropy()[0]
 
     def get_value(self, inputs, g, rnn_hxs, masks):
-        value, _, _, _ = self.base(inputs, g, rnn_hxs, masks)
+        value, _, _, _, _ = self.base(inputs, g, rnn_hxs, masks)
         return value
 
     def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
+        value, actor_features, rnn_hxs, _, _ = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -179,19 +179,21 @@ class CNNBase(NNBase):
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('relu'))
 
-        self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
-        self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
-        self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-        if self.activation == 0:
-            self.f1 = init_(nn.Linear(9216, hidden_size))
-            print("Use relu activation for f1 layer")
-        else:
-            init_ = lambda m: init(m,
+        self.conv1a = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
+        self.conv2a = init_(nn.Conv2d(32, 64, 4, stride=2))
+        self.conv3a = init_(nn.Conv2d(64, 32, 3, stride=1))
+
+        self.conv1c = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
+        self.conv2c = init_(nn.Conv2d(32, 64, 4, stride=2))
+        self.conv3c = init_(nn.Conv2d(64, 32, 3, stride=1))
+
+        self.f1c = init_(nn.Linear(9216, hidden_size))
+
+        init_ = lambda m: init(m,
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
-            self.f1 = init_(nn.Linear(9216, hidden_size))
-            print("Use tanh activation for f1 layer")
+        self.f1a = init_(nn.Linear(9216, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -202,20 +204,25 @@ class CNNBase(NNBase):
         self.train()
 
     def forward(self, inputs, g, rnn_hxs, masks):
-        x = F.relu(self.conv1(inputs))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = x.view(x.size(0), -1)
+        xa = F.relu(self.conv1a(inputs))
+        xa = F.relu(self.conv2a(xa))
+        xa = F.relu(self.conv3a(xa))
+        xa = x.view(x.size(0), -1)
+        xa = self.f1a(xa)
 
-        x = self.f1(x)
+        xc = F.relu(self.conv1c(inputs))
+        xc = F.relu(self.conv2c(xc))
+        xc = F.relu(self.conv3c(xc))
+        xc = x.view(x.size(0), -1)
+        xc = self.f1c(xc)
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         if self.activation == 0:
-            return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs, x
+            return self.critic_linear(F.relu(xc)), F.relu(xa), rnn_hxs, xa, xc
         else:
-            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs, x
+            return self.critic_linear(F.relu(xc)), torch.tanh(xa), rnn_hxs, xa, xc
 
 class CNNBase2(NNBase):
     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
