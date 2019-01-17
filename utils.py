@@ -81,7 +81,6 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
     return evaluations, g, pd_error
 
 def update_mode_entropy(evaluations, masks, dist_entropy, tonic_g, phasic_g, g, threshold, sigmoid_g, sigmoid_range, natural_value):
-    dist_entropy = dist_entropy.cpu()
     evaluations = 0.75*evaluations + 0.25*dist_entropy
     evaluations = evaluations*masks
     if sigmoid_g:

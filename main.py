@@ -144,7 +144,7 @@ def main():
                         rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
-
+            dist_entropy = dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
