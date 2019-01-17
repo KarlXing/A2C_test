@@ -207,7 +207,7 @@ class CNNBase(NNBase):
         xa = F.relu(self.conv1a(inputs))
         xa = F.relu(self.conv2a(xa))
         xa = F.relu(self.conv3a(xa))
-        xa = xa.view(xc.size(0), -1)
+        xa = xa.view(xa.size(0), -1)
         xa = self.f1a(xa)
 
         xc = F.relu(self.conv1c(inputs))
