@@ -207,13 +207,13 @@ class CNNBase(NNBase):
         xa = F.relu(self.conv1a(inputs))
         xa = F.relu(self.conv2a(xa))
         xa = F.relu(self.conv3a(xa))
-        xa = xa.view(x.size(0), -1)
+        xa = xa.view(xc.size(0), -1)
         xa = self.f1a(xa)
 
         xc = F.relu(self.conv1c(inputs))
         xc = F.relu(self.conv2c(xc))
         xc = F.relu(self.conv3c(xc))
-        xc = xc.view(x.size(0), -1)
+        xc = xc.view(xc.size(0), -1)
         xc = self.f1c(xc)
 
         if self.is_recurrent:
