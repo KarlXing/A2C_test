@@ -183,13 +183,19 @@ class CNNBase(NNBase):
         if self.activation == 0:
             self.f1 = init_(nn.Linear(9216, hidden_size))
             print("Use relu activation for f1 layer")
-        else:
+        elif self.activation == 1:
             init_ = lambda m: init(m,
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
             self.f1 = init_(nn.Linear(9216, hidden_size))
             print("Use tanh activation for f1 layer")
+        else:
+            init_ = lambda m: init(m,
+                nn.init.orthogonal_,
+                lambda x: nn.init.constant_(x, 0),
+                nn.init.calculate_gain('sigmoid'))
+            self.f1 = init_(nn.Linear(9216, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -212,8 +218,10 @@ class CNNBase(NNBase):
 
         if self.activation == 0:
             return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs, x
-        else:
+        elif self.activation == 1:
             return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs, x
+        else:
+            return self.critic_linear(F.relu(x)), F.sigmoid(x), rnn_hxs, x
 
 class CNNBase2(NNBase):
     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
@@ -231,13 +239,19 @@ class CNNBase2(NNBase):
         if self.activation == 0:
             self.f1 = init_(nn.Linear(9216, hidden_size))
             print("Use relu activation for f1 layer")
-        else:
+        elif self.activation == 1:
             init_ = lambda m: init(m,
                 nn.init.orthogonal_,
                 lambda x: nn.init.constant_(x, 0),
                 nn.init.calculate_gain('tanh'))
             self.f1 = init_(nn.Linear(9216, hidden_size))
             print("Use tanh activation for f1 layer")
+        else:
+            init_ = lambda m: init(m,
+                nn.init.orthogonal_,
+                lambda x: nn.init.constant_(x, 0),
+                nn.init.calculate_gain('sigmoid'))
+            self.f1 = init_(nn.Linear(9216, hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -266,8 +280,10 @@ class CNNBase2(NNBase):
         else:
             if self.activation == 0:
                 return self.critic_linear(F.relu(x)), F.relu(x*g), rnn_hxs, x
-            else:
+            elif self.activation == 1:
                 return self.critic_linear(F.relu(x)), torch.tanh(x*g), rnn_hxs, x
+            else:
+                return self.critic_linear(F.relu(x), F.sigmoid(x*g), rnn_hxs, x)
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
