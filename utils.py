@@ -86,7 +86,7 @@ def update_mode_entropy(device, evaluations, masks, dist_entropy, tonic_g, phasi
     if sigmoid_g:
         evaluations_mode = (evaluations - threshold)*(sigmoid_range/threshold)
         g = 2*(phasic_g-1)*sigmoid(evaluations_mode)-(phasic_g-2)
-        mask = (g < 1).to(device, dtype=torch.float32)
+        mask = (g < 1).to(torch.device('cpu'), dtype=torch.float32)
         g = g*(1-mask) + 1/(1-g*mask)        
         # g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
     else:
