@@ -18,12 +18,8 @@ class Policy(nn.Module):
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            if modulation != 2:
-                self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
-                print("Use no modulation in model")
-            else:
-                self.base = CNNBase2(obs_shape[0], activation=activation, sync = sync, **base_kwargs)
-                print("Use modulaion in model")
+            self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
+            #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
             print("Use MLP model")
@@ -53,6 +49,7 @@ class Policy(nn.Module):
 
     def act(self, inputs, g, rnn_hxs, masks, deterministic=False):
         value, actor_features, rnn_hxs, x = self.base(inputs, g, rnn_hxs, masks)
+        actor_features = actor_features*g
         dist = self.dist(actor_features)
 
         if deterministic:
@@ -63,7 +60,7 @@ class Policy(nn.Module):
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action, action_log_probs, rnn_hxs, x[0].min(), x[0].max(), x[0].mean(), dist.entropy()[0]
+        return value, action, action_log_probs, rnn_hxs, x[0].min(), x[0].max(), x[0].mean(), dist.entropy()
 
     def get_value(self, inputs, g, rnn_hxs, masks):
         value, _, _, _ = self.base(inputs, g, rnn_hxs, masks)
@@ -71,6 +68,7 @@ class Policy(nn.Module):
 
     def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
+        actor_features = actor_features*g
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)

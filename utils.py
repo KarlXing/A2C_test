@@ -80,6 +80,21 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
                 g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
     return evaluations, g, pd_error
 
+def update_mode_entropy(device, evaluations, masks, dist_entropy, tonic_g, phasic_g, g, threshold, sigmoid_g, sigmoid_range, natural_value):
+    evaluations = 0.75*evaluations + 0.25*dist_entropy
+    evaluations = evaluations*masks
+    if sigmoid_g:
+        evaluations_mode = (evaluations - threshold)*(sigmoid_range/threshold)
+        g = 2*(phasic_g-1)*sigmoid(evaluations_mode)-(phasic_g-2)
+        mask = (g < 1).to(torch.device('cpu'), dtype=torch.float32)
+        g = g*(1-mask) + 1/(1-g*mask)
+        g = torch.clamp(g, tonic_g, phasic_g)
+        # g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
+    else:
+        for i in range(g.shape[0]):
+            g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
+    return evaluations, g
+
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
     for i in range(obs.shape[0]):

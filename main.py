@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode, neuro_activity, obs_representation
+from utils import get_vec_normalize, update_mode_entropy, neuro_activity, obs_representation
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -134,7 +134,11 @@ def main():
     mean_evaluation = torch.tensor(0.0)
     start = time.time()
     g_step = 0
+    used_phasic = 1.0
+    used_tonic = 1.0
     for j in range(num_updates):
+        used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
+        used_tonic = 1.0/used_phasic
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
@@ -144,7 +148,7 @@ def main():
                         rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
-
+            dist_entropy = dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -158,21 +162,21 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g, pd_error = update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g, g, args.phasic_threshold, args.sigmoid, args.sigmoid_range, args.natural_value)
-            mean_evaluation = ((g_step-1) * mean_evaluation+ abs(evaluations).mean())/g_step
+            evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, used_tonic, used_phasic, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
+            mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
             if args.modulation != 0:
                 g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
-                writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
+                # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0], g_step)
                 writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
-                writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
-                writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
-                writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy.cpu(), g_step)
+                # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
+                # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
+                # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
+                writer.add_scalar('analysis/entropy', dist_entropy.mean().cpu(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 # for i in range(args.num_processes):
