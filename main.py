@@ -158,7 +158,7 @@ def main():
             with torch.no_grad():
                 masks_device.copy_(masks)
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode_entropy(evaluations, masks, dist_entropy, tonic_g, phasic_g, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
+            evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, tonic_g, phasic_g, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
             mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
             if args.modulation != 0:
                 g_device.copy_(g)
