@@ -116,9 +116,9 @@ def main():
         print("invalid modulation")
     print("tonic g is: ", tonic_g)
     print("phasic g is: ", phasic_g)
-    g = torch.ones(args.num_processes, 1)*tonic_g
+    g = torch.ones(args.num_processes, 1)*tonic_g.to(device)
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
-    evaluations = torch.zeros(args.num_processes, 1)
+    #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -131,24 +131,27 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    mean_evaluation = torch.tensor(0.0)
+    mean_entropy = torch.tensor(0.0)
     start = time.time()
     g_step = 0
-    used_phasic = 1.0
-    used_tonic = 1.0
+    min_g = tonic_g if args.min_g == 0.0 else args.min_g
     for j in range(num_updates):
-        used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
-        used_tonic = 1.0/used_phasic
+        # update phasic and tonic g value
+        if args.fixed_g:
+            used_phasic = phasic_g
+        else:
+            used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, dist_entropy, g = actor_critic.act(
                         rollouts.obs[step],
-                        rollouts.g[step],
                         rollouts.recurrent_hidden_states[step],
-                        rollouts.masks[step])
+                        rollouts.masks[step],
+                        mean_entropy, min_g, used_phasic, device, args.flip_g, args.action_selection)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
+            mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -161,22 +164,23 @@ def main():
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
-                next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, used_tonic, used_phasic, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
-            mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
-            if args.modulation != 0:
+                next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
+            if args.dynamic_lr == 1:
                 g_device.copy_(g)
+            elif args.dynamic_lr == 2:
+                g_device.copy_(1.0/g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
-                writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
+                #writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
-                writer.add_scalar('analysis/g', g[0], g_step)
+                writer.add_scalar('analysis/g', g.cpu()[0], g_step)
                 writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
                 # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
                 # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
                 # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy.mean().cpu(), g_step)
+                writer.add_scalar('analysis/entropy', dist_entropy[0], g_step)
+                writer.add_scalar('analysis/mean_entropy', mean_entropy, g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 # for i in range(args.num_processes):
