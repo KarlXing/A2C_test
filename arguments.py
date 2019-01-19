@@ -105,7 +105,7 @@ def get_args():
                         help='use fixed g, otherwise use changing g in default')
     parser.add_argument('--min-g', type=float, default=0.0,
                         help='minimum g in modualtion, tonic_g if 0.0, else args.min_g')
-    parser.add_argument('--flip-g', activation='store_true', default=False,
+    parser.add_argument('--flip-g', action='store_true', default=False,
                         help='bigger g with higher entropy in default, whether flip')
     parser.add_argument('--dynamic-lr', type=int, default=0,
                         help='0: same learning rate, 1: high g, high lr, 2: high g, low lr')

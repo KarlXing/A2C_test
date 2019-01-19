@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode_entropy, neuro_activity, obs_representation
+from utils import get_vec_normalize, neuro_activity, obs_representation
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -116,7 +116,7 @@ def main():
         print("invalid modulation")
     print("tonic g is: ", tonic_g)
     print("phasic g is: ", phasic_g)
-    g = torch.ones(args.num_processes, 1)*tonic_g.to(device)
+    g = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
@@ -149,7 +149,7 @@ def main():
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
-                        mean_entropy, min_g, used_phasic, device, args.flip_g, args.action_selection)
+                        mean_entropy, min_g, used_phasic, device, args.flip_g, args.sigmoid,  args.sigmoid_range, args.action_selection, g)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
             mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
             # Obser reward and next obs
