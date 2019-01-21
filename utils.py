@@ -89,6 +89,7 @@ def update_mode_entropy(device, evaluations, masks, dist_entropy, tonic_g, phasi
         mask = (g < 1).to(torch.device('cpu'), dtype=torch.float32)
         g = g*(1-mask) + 1/(1-g*mask)
         g = torch.clamp(g, tonic_g, phasic_g)
+        g = 1.0/g
         # g = tonic_g+evaluations_mode*(phasic_g-tonic_g)
     else:
         for i in range(g.shape[0]):

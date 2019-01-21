@@ -164,8 +164,8 @@ def main():
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
             evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, used_tonic, used_phasic, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
             mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
-            if args.modulation != 0:
-                g_device.copy_(g)
+            #if args.modulation != 0:
+            #    g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
@@ -176,7 +176,7 @@ def main():
                 # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
                 # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
                 # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy.mean().cpu(), g_step)
+                writer.add_scalar('analysis/entropy', dist_entropy[0].item(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 # for i in range(args.num_processes):
