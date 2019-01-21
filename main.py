@@ -117,6 +117,7 @@ def main():
     print("tonic g is: ", tonic_g)
     print("phasic g is: ", phasic_g)
     g = torch.ones(args.num_processes, 1)*tonic_g
+    g_rollout = (torch.ones(args.num_processes, 1)).to(device)
     g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
     evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
@@ -145,7 +146,7 @@ def main():
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
-                        rollouts.g[step],
+                        g_device,
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
@@ -164,8 +165,7 @@ def main():
                 next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
             evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, used_tonic, used_phasic, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
             mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
-            #if args.modulation != 0:
-            #    g_device.copy_(g)
+            g_device.copy_(g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
@@ -196,9 +196,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
-
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
-
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_rollout)
         # with torch.no_grad():
         #     next_value = actor_critic.get_value(rollouts.obs[-1],
         #                                         rollouts.recurrent_hidden_states[-1],
