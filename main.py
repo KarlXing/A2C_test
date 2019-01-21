@@ -153,12 +153,12 @@ def main():
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
-                next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
-            next_dist_entropy = next_dist_entropy.cpu().unsqueeze(1)
-            combined_reward = reward + next_dist_entropy
+                next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
+            # next_dist_entropy = next_dist_entropy.cpu().unsqueeze(1)
+            # combined_reward = reward + next_dist_entropy
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
-                writer.add_scalar('analysis/entropy_reward', next_dist_entropy[0].item(), g_step)
+                # writer.add_scalar('analysis/entropy_reward', next_dist_entropy[0].item(), g_step)
                 # writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 # writer.add_scalar('analysis/g', g[0], g_step)
@@ -186,7 +186,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, combined_reward, masks, g_device)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
         # with torch.no_grad():
         #     next_value = actor_critic.get_value(rollouts.obs[-1],
         #                                         rollouts.recurrent_hidden_states[-1],
