@@ -116,10 +116,7 @@ def main():
         print("invalid modulation")
     print("tonic g is: ", tonic_g)
     print("phasic g is: ", phasic_g)
-    g = torch.ones(args.num_processes, 1)*tonic_g
-    g_rollout = (torch.ones(args.num_processes, 1)).to(device)
-    g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
-    evaluations = torch.zeros(args.num_processes, 1)
+    g_device = (torch.ones(args.num_processes, 1)).to(device)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
@@ -132,24 +129,18 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    mean_evaluation = torch.tensor(0.0)
     start = time.time()
     g_step = 0
-    used_phasic = 1.0
-    used_tonic = 1.0
     for j in range(num_updates):
-        used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
-        used_tonic = 1.0/used_phasic
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy = actor_critic.act(
                         rollouts.obs[step],
-                        g_device,
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
-            dist_entropy = dist_entropy.cpu().unsqueeze(1)
+            ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -162,21 +153,20 @@ def main():
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
-                next_value = actor_critic.get_value(obs, g_device, recurrent_hidden_states, masks_device).detach()
-            evaluations, g = update_mode_entropy(device, evaluations, masks, dist_entropy, used_tonic, used_phasic, g, mean_evaluation, args.sigmoid, args.sigmoid_range, args.natural_value)
-            mean_evaluation = 0.999 * mean_evaluation+ evaluations.mean()*0.001
-            g_device.copy_(g)
-
+                next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
+            next_dist_entropy = next_dist_entropy.cpu().unsqueeze(1)
+            combined_reward = reward + next_dist_entropy
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
-                writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
+                writer.add_scalar('analysis/entropy_reward', next_dist_entropy[0].item(), g_step)
+                # writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
-                writer.add_scalar('analysis/g', g[0], g_step)
-                writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
+                # writer.add_scalar('analysis/g', g[0], g_step)
+                # writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
                 # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
                 # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
                 # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy[0].item(), g_step)
+                writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 # for i in range(args.num_processes):
@@ -196,7 +186,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_rollout)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, combined_reward, masks, g_device)
         # with torch.no_grad():
         #     next_value = actor_critic.get_value(rollouts.obs[-1],
         #                                         rollouts.recurrent_hidden_states[-1],

@@ -47,12 +47,11 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, g, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs, x = self.base(inputs, g, rnn_hxs, masks)
-        dist_entropy = self.dist(actor_features).entropy()
-        actor_features = actor_features*g
+    def act(self, inputs, rnn_hxs, masks, deterministic=False):
+        value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
+        
         dist = self.dist(actor_features)
-
+        dist_entropy = dist.entropy()
         if deterministic:
             action = dist.mode()
         else:
@@ -63,13 +62,15 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, rnn_hxs, x[0].min(), x[0].max(), x[0].mean(), dist_entropy
 
-    def get_value(self, inputs, g, rnn_hxs, masks):
-        value, _, _, _ = self.base(inputs, g, rnn_hxs, masks)
-        return value
+    def get_value(self, inputs, rnn_hxs, masks):
+        value, actor_features, _, _ = self.base(inputs, rnn_hxs, masks)
+        dist = self.dist(actor_features)
+        dist_entropy = dist.entropy()
 
-    def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
-        actor_features = actor_features*g
+        return value, dist_entropy
+
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
+        value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -206,7 +207,7 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, g, rnn_hxs, masks):
+    def forward(self, inputs, rnn_hxs, masks):
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
