@@ -101,7 +101,7 @@ def get_g_entropy(device, dist_entropy, threshold, min_g, phasic_g, sigmoid_g, s
         evaluations_mode = (dist_entropy - threshold)*(sigmoid_range/threshold)
         g = (2*(phasic_g-1)*sigmoid(evaluations_mode)-(phasic_g-2)).to(device)
         mask = (g < 1).to(torch.device(device), dtype=torch.float32)
-        g = g*(1-mask) + 1/(1-g*mask)
+        g = g*(1-mask) + 1/(2-g*mask)
         if flip_g:
             g = 1.0/g
         g = torch.clamp(g, min_g, phasic_g).unsqueeze(1)
