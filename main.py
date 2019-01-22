@@ -137,6 +137,9 @@ def main():
     start = time.time()
     g_step = 0
     min_g = tonic_g if args.min_g == 0.0 else args.min_g
+    max_g = phasic_g if args.max_g == 0.0 else args.max_g
+    print("min g is ", min_g)
+    print("max g is ", max_g)
     for j in range(num_updates):
         # update phasic and tonic g value
         if args.fixed_g:
@@ -151,7 +154,7 @@ def main():
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
-                        mean_entropy, min_g, used_phasic, device, args.flip_g, args.sigmoid,  args.sigmoid_range, args.action_selection, g)
+                        mean_entropy, min_g, max_g, used_phasic, device, args.flip_g, args.sigmoid,  args.sigmoid_range, args.action_selection, g)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
             mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
             # Obser reward and next obs

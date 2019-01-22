@@ -95,7 +95,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 #             g[i][0] = phasic_g if evaluations[i][0] > threshold else tonic_g
 #     return evaluations, g
 
-def get_g_entropy(device, dist_entropy, threshold, min_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g):
+def get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g):
     if sigmoid_g:
         threshold = threshold.to(device)
         evaluations_mode = (dist_entropy - threshold)*(sigmoid_range/threshold)
@@ -104,7 +104,7 @@ def get_g_entropy(device, dist_entropy, threshold, min_g, phasic_g, sigmoid_g, s
         g = g*(1-mask) + 1/(2-g*mask)
         if flip_g:
             g = 1.0/g
-        g = torch.clamp(g, min_g, phasic_g).unsqueeze(1)
+        g = torch.clamp(g, min=min_g, max=max_g).unsqueeze(1)
     else:
         for i in range(g.shape[0]):
             if flip_g:
