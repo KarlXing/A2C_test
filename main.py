@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode_entropy, neuro_activity, obs_representation
+from utils import get_vec_normalize, update_mode_entropy, neuro_activity, obs_representation, reward_calculate
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -127,6 +127,7 @@ def main():
     obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
+    mean_entropy = torch.tensor(0.0)
 
     episode_rewards = deque(maxlen=10)
     start = time.time()
@@ -141,6 +142,10 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
             ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
+            if g_step == 1:
+                mean_entropy = ori_dist_entropy.mean()
+            else:
+                mean_entropy = 0.999*mean_entropy + 0.001*ori_dist_entropy.mean()
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -155,7 +160,8 @@ def main():
                 masks_device.copy_(masks)
                 next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
             next_dist_entropy = next_dist_entropy.cpu().unsqueeze(1)
-            combined_reward = reward + next_dist_entropy
+            ex_reward = reward_calculate(next_dist_entropy, mean_entropy)
+            combined_reward = reward + ex_reward
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy_reward', next_dist_entropy[0].item(), g_step)

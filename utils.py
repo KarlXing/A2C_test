@@ -117,3 +117,10 @@ def obs_representation(obs, modulation, g_device, input_neuro):
     else:  # f1 modulation
         obs = obs/255
     return obs
+
+def reward_calculate(dist_entropy, mean_entropy, max_reward = 0.1):
+    mask = (dist_entropy>mean_entropy).to(torch.device('cpu'), dtype=torch.float32)
+    reward = (dist_entropy/mean_entropy-1)*mask
+    reward = reward*reward
+    reward = torch.clamp(reward*max_reward, max=max_reward)
+    return reward 
