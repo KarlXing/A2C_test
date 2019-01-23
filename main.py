@@ -158,7 +158,7 @@ def main():
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
-                next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
+                next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
             next_dist_entropy = next_dist_entropy.cpu().unsqueeze(1)
             ex_reward = reward_calculate(next_dist_entropy, mean_entropy)
             combined_reward = reward + ex_reward
