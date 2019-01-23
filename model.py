@@ -51,7 +51,8 @@ class Policy(nn.Module):
         value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
-        g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
+        # g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
+        g = calculate_g(device, dist_entropy, threshold, 1/phasic_g)
         if action_selection:
             dist = self.dist(actor_features*g)
 
