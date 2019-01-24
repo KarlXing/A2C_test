@@ -6,7 +6,7 @@ import torch
 from gym.spaces.box import Box
 
 from baselines import bench
-from atari_wrappers import make_atari, wrap_carl, wrap_deepmind, wrap_carl_new
+from atari_wrappers import make_atari, wrap_carl, wrap_deepmind, wrap_carl_full
 from baselines.common.vec_env import VecEnvWrapper
 from baselines.common.vec_env.subproc_vec_env import SubprocVecEnv
 from baselines.common.vec_env.dummy_vec_env import DummyVecEnv
@@ -54,7 +54,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
 
         if is_atari:
             if new_wrapper:
-                env = wrap_carl_new(env)
+                env = wrap_carl_full(env)
             else:
                 env = wrap_deepmind(env)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
