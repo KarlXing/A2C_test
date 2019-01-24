@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from distributions import Categorical, DiagGaussian
-from utils import init, init_normc_, tanh_g, get_g_entropy
+from utils import init, init_normc_, tanh_g, calculate_g
 
 
 class Flatten(nn.Module):

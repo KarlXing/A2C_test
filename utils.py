@@ -119,7 +119,7 @@ def calculate_g(device, middle, x, min_g):
     mask = (x>middle).to(device, dtype=torch.float32)
     y = mask*((x-middle)*((min_g-1)/middle)+1.0) + (1-mask)*(((x-middle)*((1-1/min_g)/middle))+1.0)
     y = torch.clamp(y, min=min_g, max=1/min_g)
-    return y
+    return y.unsqueeze(1)
 
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
