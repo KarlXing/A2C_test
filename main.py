@@ -124,7 +124,8 @@ def main():
                         actor_critic.recurrent_hidden_state_size, tonic_g)
 
     obs = envs.reset()
-    obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+    basic_obs = obs/255
+    obs = obs_representation(basic_obs, obs, args.modulation, g_device, args.input_neuro)
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -148,7 +149,7 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+            obs = obs_representation(basic_obs, obs, args.modulation, g_device, args.input_neuro)
 
             #update g
             with torch.no_grad():
