@@ -120,7 +120,7 @@ def neuro_activity(obs, g, mid = 128):
         obs[i] = (torch.tanh((obs[i]-mid)/g[i])+1)/2
     return obs
 
-def obs_representation(obs, modulation, g_device, input_neuro):
+def obs_representation(basic_obs, obs, modulation, g_device, input_neuro):
     if modulation == 0:  # no modulation
         if input_neuro:
             obs = neuro_activity(obs, g_device)
@@ -136,5 +136,6 @@ def obs_representation(obs, modulation, g_device, input_neuro):
         obs = obs/255
     obs_cp = obs
     obs_diff = obs_cp[:,1:4,:,:] - obs[:,:3,:,:]
-    obs = torch.cat((obs[:,0:1,:,:], obs_diff), 1)
+    obs_diff2 = obs_cp[:,0:1,:,:] - basic_obs[:,3:,:,:]
+    obs = torch.cat((obs_diff2, obs_diff), 1)
     return obs
