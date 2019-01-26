@@ -117,7 +117,7 @@ def obs_representation(basic_obs, obs, modulation, g_device, input_neuro):
     else:  # f1 modulation
         obs = obs/255
     obs_cp = obs
-    obs_diff = obs_cp[:,1:4,:,:] - obs[:,:3,:,:]
+    obs_diff = obs_cp[:,2:4,:,:] - obs[:,1:3,:,:]
     obs_diff2 = obs_cp[:,0:1,:,:] - basic_obs[:,3:,:,:]
-    obs = torch.cat((obs_diff2, obs_diff), 1)
+    obs = torch.cat((basic_obs[:,3:,:,:], obs_diff2, obs_diff), 1)
     return obs
