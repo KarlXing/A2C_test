@@ -1,4 +1,5 @@
 import copy
+import math
 import glob
 import os
 import time
@@ -148,7 +149,7 @@ def main():
             # eps action
             rand_val = torch.rand(action.shape).to(device)
             eps_mask = (rand_val > eps_threshold).type(torch.int64)
-            rand_action = torch.LongTensor([envs.action_space.sample() for i in args.num_processes]).unsqueeze(1).to(device)
+            rand_action = torch.LongTensor([envs.action_space.sample() for i in range(args.num_processes)]).unsqueeze(1).to(device)
             action = eps_mask * action + (1 - eps_mask) * rand_action
             obs, reward, done, infos = envs.step(action)
 
