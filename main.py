@@ -63,7 +63,7 @@ except OSError:
 # main
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 100000
+EPS_DECAY = 50000
 
 def main():
     writer = SummaryWriter()
@@ -146,9 +146,9 @@ def main():
                         rollouts.masks[step])
             ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
             # eps action
-            rand_val = torch.rand(action.shape)
+            rand_val = torch.rand(action.shape).to(device)
             eps_mask = (rand_val > eps_threshold).type(torch.int64)
-            rand_action = torch.LongTensor([envs.action_space.sample() for i in args.num_processes])
+            rand_action = torch.LongTensor([envs.action_space.sample() for i in args.num_processes]).unsqueeze(1).to(device)
             action = eps_mask * action + (1 - eps_mask) * rand_action
             obs, reward, done, infos = envs.step(action)
 
