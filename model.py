@@ -52,11 +52,11 @@ class Policy(nn.Module):
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
-        if deterministic:
-            action = dist.mode()
-        else:
-            action = dist.sample()
-
+        # if deterministic:
+        #     action = dist.mode()
+        # else:
+        #     action = dist.sample()
+        action = dist.mode()
         action_log_probs = dist.log_probs(action)
         #dist_entropy = dist.entropy().mean()
 
