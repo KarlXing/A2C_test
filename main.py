@@ -118,8 +118,8 @@ def main():
     print("phasic g is: ", phasic_g)
     print("action action_selection: ", args.action_selection)
     print("dynamic_lr: ", args.dynamic_lr)
-    g = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
-    g_device = (torch.ones(args.num_processes, 1)*tonic_g).to(device)
+    g = (torch.ones(args.num_processes, 1)).to(device)
+    g_device = (torch.ones(args.num_processes, 1)).to(device)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
