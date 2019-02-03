@@ -165,7 +165,7 @@ def main():
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
-
+            ratio = torch.sum(g>mean_entropy).item()/args.num_processes
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
@@ -177,6 +177,7 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
+                writer.add_scalar('analysis/ratio', ratio, g_step)
                 #writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0].item(), g_step)
