@@ -133,6 +133,7 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
+    entropys = deque(maxlen=100)
     mean_entropy = torch.tensor(0.0)
     start = time.time()
     g_step = 0
@@ -156,7 +157,8 @@ def main():
                         rollouts.masks[step],
                         mean_entropy, min_g, max_g, used_phasic, device, args.flip_g, args.sigmoid,  args.sigmoid_range, args.action_selection, g)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
-            mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
+            entropys.append(torch.sum(dist_entropy).item()/args.num_processes)
+            #mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -166,6 +168,7 @@ def main():
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
             ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
+            mean_entropy = np.mean(entropys)
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
