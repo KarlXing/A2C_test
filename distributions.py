@@ -40,10 +40,12 @@ class Categorical(nn.Module):
               gain=0.01)
 
         self.linear = init_(nn.Linear(num_inputs, num_outputs))
+        self.softmax = nn.Softmax()
 
     def forward(self, x):
         x = self.linear(x)
-        return FixedCategorical(logits=x)
+        x = self.softmax(x)
+        return FixedCategorical(probs=x)
 
 
 class DiagGaussian(nn.Module):
