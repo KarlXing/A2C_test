@@ -69,9 +69,9 @@ class Policy(nn.Module):
 
         return value, dist_entropy
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
+    def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
-        dist = self.dist(actor_features)
+        dist = self.dist(actor_features*g)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
