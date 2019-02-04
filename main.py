@@ -95,27 +95,6 @@ def main():
                                args.entropy_coef, acktr=True)
     # print key arguments
     print("modulation type ", args.modulation)
-    if not args.input_neuro:
-        print("use normalized input")
-    else:
-        print("use neuro activity of input")
-    if args.modulation == 0:
-        tonic_g = 1.0
-        phasic_g = 1.0
-    elif args.modulation == 1:
-        tonic_g = args.neuro_input_tonic
-        phasic_g = args.neuro_input_phasic
-    elif args.modulation == 2:
-        if args.activation == 0:
-            tonic_g = args.relu_tonic
-            phasic_g = args.relu_phasic
-        else:
-            tonic_g = args.tanh_f1_tonic
-            phasic_g = args.tanh_f1_phasic
-    else:
-        print("invalid modulation")
-    print("tonic g is: ", tonic_g)
-    print("phasic g is: ", phasic_g)
     print("action action_selection: ", args.action_selection)
     print("dynamic_lr: ", args.dynamic_lr)
     g = (torch.ones(args.num_processes, 1)).to(device)
@@ -125,7 +104,7 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size, tonic_g)
+                        actor_critic.recurrent_hidden_state_size, 1.0)
 
     obs = envs.reset()
     obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
@@ -133,20 +112,20 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    entropys = deque(maxlen=100)
-    mean_entropy = torch.tensor(0.0)
+    #entropys = deque(maxlen=100)
+    #mean_entropy = torch.tensor(0.0)
     start = time.time()
     g_step = 0
-    min_g = tonic_g if args.min_g == 0.0 else args.min_g
-    max_g = phasic_g if args.max_g == 0.0 else args.max_g
-    print("min g is ", min_g)
-    print("max g is ", max_g)
+    # min_g =  args.min_g
+    # max_g =  args.max_g
+    # print("min g is ", min_g)
+    # print("max g is ", max_g)
     for j in range(num_updates):
         # update phasic and tonic g value
-        if args.fixed_g:
-            used_phasic = phasic_g
-        else:
-            used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
+        # if args.fixed_g:
+        #     used_phasic = phasic_g
+        # else:
+        #     used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
@@ -155,7 +134,7 @@ def main():
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
-                        mean_entropy, min_g, max_g, used_phasic, device, args.flip_g, args.sigmoid,  args.sigmoid_range, args.action_selection, g)
+                        args.action_selection, g)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
             entropys.append(torch.sum(dist_entropy).item()/args.num_processes)
             #mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
@@ -168,7 +147,7 @@ def main():
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
             ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
-            mean_entropy = torch.tensor(np.mean(entropys))
+            #mean_entropy = torch.tensor(np.mean(entropys))
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
@@ -184,12 +163,15 @@ def main():
                 #writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0].item(), g_step)
+                writer.add_scalar('analysis/min_g', torch.min(g).item(), g_step)
+                writer.add_scalar('analysis/max_g', torch.max(g).item(), g_step)
+                writer.add_scalar('analysis/mean_g', torch.mean(g).item(), g_step)
                 #writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
                 # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
                 # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
                 # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
                 writer.add_scalar('analysis/entropy', dist_entropy[0], g_step)
-                writer.add_scalar('analysis/mean_entropy', mean_entropy, g_step)
+                #writer.add_scalar('analysis/mean_entropy', mean_entropy, g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 # for i in range(args.num_processes):
