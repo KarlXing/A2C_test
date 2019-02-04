@@ -136,7 +136,7 @@ def main():
                         rollouts.masks[step],
                         args.action_selection, g)
             dist_entropy = dist_entropy.cpu().unsqueeze(1)
-            entropys.append(torch.sum(dist_entropy).item()/args.num_processes)
+            #entropys.append(torch.sum(dist_entropy).item()/args.num_processes)
             #mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -146,7 +146,7 @@ def main():
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
-            ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
+            #ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
             #mean_entropy = torch.tensor(np.mean(entropys))
             #update g
             with torch.no_grad():
@@ -159,7 +159,7 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
-                writer.add_scalar('analysis/ratio', ratio, g_step)
+                #writer.add_scalar('analysis/ratio', ratio, g_step)
                 #writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
                 # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
                 writer.add_scalar('analysis/g', g[0].item(), g_step)
