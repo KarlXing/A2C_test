@@ -186,6 +186,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
+            assert(torch.sum(g_device).item() == args.num_processes)
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
         # with torch.no_grad():
         #     next_value = actor_critic.get_value(rollouts.obs[-1],
