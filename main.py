@@ -168,7 +168,7 @@ def main():
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
             ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
-            mean_entropy = np.mean(entropys)
+            mean_entropy = torch.tensor(np.mean(entropys))
             #update g
             with torch.no_grad():
                 masks_device.copy_(masks)
