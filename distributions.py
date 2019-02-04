@@ -42,8 +42,11 @@ class Categorical(nn.Module):
         self.linear = init_(nn.Linear(num_inputs, num_outputs))
         self.softmax = nn.Softmax()
 
-    def forward(self, x):
-        x = self.linear(x)
+    def forward(self, x, g=None):
+        if g is None:
+            x = self.linear(x)
+        else:
+            x = self.linear(x)*g
         x = self.softmax(x)
         return FixedCategorical(probs=x)
 

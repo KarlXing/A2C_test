@@ -53,7 +53,7 @@ class Policy(nn.Module):
         dist_entropy = dist.entropy()
         g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
         if action_selection:
-            dist = self.dist(actor_features*g)
+            dist = self.dist(actor_features, g)
 
         if deterministic:
             action = dist.mode()
@@ -69,8 +69,7 @@ class Policy(nn.Module):
 
     def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
-        actor_features = actor_features*g
-        dist = self.dist(actor_features)
+        dist = self.dist(actor_features, g)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
