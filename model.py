@@ -47,7 +47,7 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, action_selection, g, sum_entropys, len_entropys, deterministic=False):
+    def act(self, inputs, rnn_hxs, masks, action_selection, sum_entropys, len_entropys, g, deterministic=False):
         value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
