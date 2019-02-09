@@ -15,6 +15,7 @@ class RolloutStorage(object):
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
         self.returns = torch.zeros(num_steps + 1, num_processes, 1)
         self.action_log_probs = torch.zeros(num_steps, num_processes, 1)
+        self.entropys = torch.zeros(num_steps, num_processes)
         if action_space.__class__.__name__ == 'Discrete':
             action_shape = 1
         else:
@@ -37,8 +38,9 @@ class RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
+        self.entropys = self.entropys.to(device)
 
-    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, g):
+    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, g, entropys):
         self.obs[self.step + 1].copy_(obs)
         self.g[self.step].copy_(g)
         self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
@@ -47,6 +49,7 @@ class RolloutStorage(object):
         self.value_preds[self.step].copy_(value_preds)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
+        self.entropys[self.step].copy_(entropys)
 
         self.step = (self.step + 1) % self.num_steps
 
@@ -54,7 +57,6 @@ class RolloutStorage(object):
         self.obs[0].copy_(self.obs[-1])
         self.recurrent_hidden_states[0].copy_(self.recurrent_hidden_states[-1])
         self.masks[0].copy_(self.masks[-1])
-        # self.g[0].copy_(self.g[-1])
 
     def compute_returns(self, next_value, use_gae, gamma, tau):
         if use_gae:

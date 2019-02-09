@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, neuro_activity, obs_representation
+from utils import get_vec_normalize, neuro_activity, obs_representation, get_g_entropy
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -97,7 +97,7 @@ def main():
     print("modulation type ", args.modulation)
     print("action action_selection: ", args.action_selection)
     print("dynamic_lr: ", args.dynamic_lr)
-    g = (torch.ones(args.num_processes, 1)).to(device)
+    g = torch.ones(args.num_processes, 1)
     g_device = (torch.ones(args.num_processes, 1)).to(device)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
@@ -113,31 +113,20 @@ def main():
 
     episode_rewards = deque(maxlen=10)
     entropys = deque(maxlen=100)
-    #mean_entropy = torch.tensor(0.0)
     start = time.time()
     g_step = 0
-    # min_g =  args.min_g
-    # max_g =  args.max_g
-    # print("min g is ", min_g)
-    # print("max g is ", max_g)
     for j in range(num_updates):
-        # update phasic and tonic g value
-        # if args.fixed_g:
-        #     used_phasic = phasic_g
-        # else:
-        #     used_phasic = 1.0 + (phasic_g-1)*(min(1, 10*j/num_updates))
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, dist_entropy, g = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
-                        args.action_selection, np.sum(entropys), len(entropys), g)
-            dist_entropy = dist_entropy.cpu().unsqueeze(1)
-            entropys.append(torch.sum(dist_entropy).item()/args.num_processes)
-            #mean_entropy = 0.999*mean_entropy + dist_entropy.mean()*0.001
+                        g_device)
+            dist_entropy = dist_entropy.cpu()
+
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
@@ -146,37 +135,12 @@ def main():
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
-            #ratio = torch.sum(g>mean_entropy.item()).cpu().item()/args.num_processes
-            # mean_entropy = torch.tensor(np.mean(entropys))
-            #update g
-            with torch.no_grad():
-                masks_device.copy_(masks)
-                next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device).detach()
-            if args.dynamic_lr == 1:
-                g_device.copy_(g)
-            elif args.dynamic_lr == 2:
-                g_device.copy_(1.0/g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
-                # writer.add_scalar('analysis/ratio', ratio, g_step)
-                # writer.add_scalar('analysis/evaluations', evaluations[0], g_step)
-                # writer.add_scalar('analysis/pd_error', pd_error[0], g_step)
-                writer.add_scalar('analysis/g', g[0].item(), g_step)
-                writer.add_scalar('analysis/min_g', torch.min(g).item(), g_step)
-                writer.add_scalar('analysis/max_g', torch.max(g).item(), g_step)
-                writer.add_scalar('analysis/mean_g', torch.mean(g).item(), g_step)
-                # writer.add_scalar('analysis/mean_evaluation', mean_evaluation, g_step)
-                # writer.add_scalar('analysis/xmax', xmax.cpu(), g_step)
-                # writer.add_scalar('analysis/xmin', xmin.cpu(), g_step)
-                # writer.add_scalar('analysis/xmean', xmean.cpu(), g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy[0], g_step)
-                writer.add_scalar('analysis/mean_entropy', np.mean(entropys), g_step)
+                writer.add_scalar('analysis/entropy', torch.mean(dist_entropy), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
-                # for i in range(args.num_processes):
-                #     if done[i]:
-                #         writer.add_scalar('analysis/done', i, j*args.num_steps + step)
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
@@ -192,12 +156,22 @@ def main():
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
 
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device, dist_entropy)
 
-        # with torch.no_grad():
-        #     next_value = actor_critic.get_value(rollouts.obs[-1],
-        #                                         rollouts.recurrent_hidden_states[-1],
-        #                                         rollouts.masks[-1]).detach()
+        # after 5 steps
+        mean_entropys = torch.mean(rollouts.entropys, dim=1)
+        g = get_g_entropy(mean_entropys)
+        g_device.copy_(g)
+        if args.log_evaluation:
+            # writer.add_scalar('analysis/g', g[0].item(), g_step)
+            writer.add_scalar('analysis/ming', torch.min(g).item(), g_step)
+            writer.add_scalar('analysis/maxg', torch.max(g).item(), g_step)
+            writer.add_scalar('analysis/meang', torch.mean(g).item(), g_step)
+
+        with torch.no_grad():
+            next_value = actor_critic.get_value(rollouts.obs[-1],
+                                                rollouts.recurrent_hidden_states[-1],
+                                                rollouts.masks[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 

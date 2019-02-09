@@ -47,14 +47,10 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, action_selection, sum_entropys, len_entropys, g, deterministic=False):
-        value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
+    def act(self, inputs, rnn_hxs, masks, g, deterministic=False):
+        value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
-        # g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
-        g = get_g_entropy(dist_entropy, sum_entropys, len_entropys, g)
-        if action_selection:
-            dist = self.dist(actor_features, g)
 
         if deterministic:
             action = dist.mode()
@@ -62,15 +58,15 @@ class Policy(nn.Module):
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
         # return entropy without modulation as signal, action_log_probs are not used yet
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, g
+        return value, action, action_log_probs, rnn_hxs, dist_entropy
 
     def get_value(self, inputs, rnn_hxs, masks):
-        value, _, _, _ = self.base(inputs, rnn_hxs, masks)
+        value = self.base.value(inputs, rnn_hxs, masks)
         return value
 
     def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
-        dist = self.dist(actor_features, g)
+        value, actor_features, rnn_hxs, _ = self.base(inputs, g, rnn_hxs, masks)
+        dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
@@ -206,7 +202,7 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, rnn_hxs, masks):
+    def forward(self, inputs, g, rnn_hxs, masks):
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -218,11 +214,24 @@ class CNNBase(NNBase):
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
         if self.activation == 0:
-            return self.critic_linear(F.relu(x)), F.relu(x), rnn_hxs, x
+            return self.critic_linear(F.relu(x)), F.relu(x*g), rnn_hxs, x
         elif self.activation == 1:
-            return self.critic_linear(F.relu(x)), torch.tanh(x), rnn_hxs, x
+            return self.critic_linear(F.relu(x)), torch.tanh(x*g), rnn_hxs, x
         else:
-            return self.critic_linear(F.relu(x)), F.sigmoid(x), rnn_hxs, x
+            return self.critic_linear(F.relu(x)), F.sigmoid(x*g), rnn_hxs, x
+
+    def value(self, inputs, rnn_hxs, masks):
+        x = F.relu(self.conv1(inputs))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+
+        x = self.f1(x)
+
+        if self.is_recurrent:
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+
+        return self.critic_linear(F.relu(x))
 
 # class CNNBase2(NNBase):
 #     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
