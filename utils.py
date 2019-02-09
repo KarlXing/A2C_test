@@ -114,7 +114,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 #     return  g
 
 
-def get_g_entropy(entropys, mean_entropy=None)
+def get_g_entropy(entropys, mean_entropy=None):
     num_processes = entropys.shape[0]
     if mean_entropy is None:
         mean_entropy = torch.mean(entropys)

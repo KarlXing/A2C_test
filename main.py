@@ -159,7 +159,7 @@ def main():
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device, dist_entropy)
 
         # after 5 steps
-        mean_entropys = torch.mean(rollouts.entropys, dim=1)
+        mean_entropys = torch.mean(rollouts.entropys, dim=0)
         g = get_g_entropy(mean_entropys)
         g_device.copy_(g)
         if args.log_evaluation:
