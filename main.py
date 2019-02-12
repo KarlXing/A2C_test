@@ -103,7 +103,7 @@ def main():
                         actor_critic.recurrent_hidden_state_size, 1.0)
 
     obs = envs.reset()
-    obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+    obs = obs_representation(obs, args.modulation, g, args.input_neuro)
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -128,9 +128,9 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+            obs = obs_representation(obs, args.modulation, g, args.input_neuro)
 
-            g = get_g_entropy(dist_entropy)
+            g = get_g_entropy(dist_entropy, g)
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
