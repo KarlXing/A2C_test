@@ -47,30 +47,25 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, action_selection, g, deterministic=False):
+    def act(self, inputs, rnn_hxs, masks, deterministic=False):
         value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
-        # g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
-        g = get_g_entropy(dist_entropy, g)
-        if action_selection:
-            dist = self.dist(actor_features, g)
 
         if deterministic:
             action = dist.mode()
         else:
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
-        # return entropy without modulation as signal, action_log_probs are not used yet
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, g
+        return value, action, action_log_probs, rnn_hxs, dist_entropy
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _, _ = self.base(inputs, rnn_hxs, masks)
         return value
 
-    def evaluate_actions(self, inputs, g, rnn_hxs, masks, action):
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
-        dist = self.dist(actor_features, g)
+        dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()

@@ -116,9 +116,8 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 def get_g_entropy(dist_entropy, g):
     num_processes = dist_entropy.shape[0]
     exp_entropy =torch.exp(dist_entropy)
-    g = (torch.exp(torch.sum(dist_entropy)/num_processes))/exp_entropy
+    g = exp_entropy/(torch.exp(torch.sum(dist_entropy)/num_processes))
     return g.unsqueeze(1)
-
 
 def neuro_activity(obs, g, mid = 128):
     assert(obs.shape[0] == g.shape[0])
