@@ -45,10 +45,10 @@ class A2C_ACKTR():
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         advantages = rollouts.returns[:-1] - values
-        value_loss = (advantages.pow(2) * rollouts.g).mean()
+        value_loss = (advantages.pow(2)).mean()
 
         action_loss = -(advantages.detach() * action_log_probs * rollouts.g).mean()
-        dist_entropy = (dist_entropy * rollouts.g).mean()
+        dist_entropy = (dist_entropy).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
