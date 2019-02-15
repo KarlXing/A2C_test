@@ -130,8 +130,9 @@ def main():
 
             obs = obs_representation(obs, args.modulation, g, args.input_neuro)
             if j >= args.start_modulate:
-                next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
-                entropys = (1 - args.entropy_update) * (next_entropy.cpu().unsqueeze(1)) + args.entropy_update * entropys
+                with torch.no_grad():
+                    next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
+                    entropys = (1 - args.entropy_update) * (next_entropy.cpu().unsqueeze(1)) + args.entropy_update * entropys
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
