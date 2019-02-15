@@ -141,9 +141,10 @@ def obs_representation(obs, modulation, g_device, input_neuro):
         obs = obs/255
     return obs
 
-def modulate_lr(advantages, entropys):
+def modulate_lr(advantages, entropys, device):
     direction = (advantages > 0).type(torch.FloatTensor) - (advantages < 0).type(torch.FloatTensor)
-    entropys = direction * entropys
-    exp_entropy = torch.exp(entropys)
+    direction = direction.to(device)
+    direc_entropys = direction * entropys
+    exp_entropy = torch.exp(direc_entropys)
     g = exp_entropy/torch.mean(exp_entropy)
     return g

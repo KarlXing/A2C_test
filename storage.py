@@ -10,6 +10,7 @@ class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.entropys = torch.zeros(num_steps, num_processes, 1)
+        self.lr = torch.zeros(num_steps, num_processes, 1)
         self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
@@ -30,6 +31,7 @@ class RolloutStorage(object):
     def to(self, device):
         self.obs = self.obs.to(device)
         self.entropys = self.entropys.to(device)
+        self.lr = self.lr.to(device)
         self.recurrent_hidden_states = self.recurrent_hidden_states.to(device)
         self.rewards = self.rewards.to(device)
         self.value_preds = self.value_preds.to(device)
@@ -49,6 +51,9 @@ class RolloutStorage(object):
         self.masks[self.step + 1].copy_(masks)
 
         self.step = (self.step + 1) % self.num_steps
+
+    def insert_lr(self, lr):
+        self.lr.copy_(lr)
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])

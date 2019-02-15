@@ -94,7 +94,7 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
     # print key arguments
-    # g = (torch.ones(args.num_processes, 1)).to(device)
+    g = (torch.ones(args.num_processes, 1)).to(device)
     entropys = torch.zeros(args.num_processes, 1)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
@@ -129,7 +129,7 @@ def main():
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g, args.input_neuro)
-            if j >= args.start_modualte:
+            if j >= args.start_modulate:
                 next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
                 entropys = (1 - args.entropy_update) * (next_entropy.cpu().unsqueeze(1)) + args.entropy_update * entropys
 
@@ -163,10 +163,10 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy, min_lr, max_lr = agent.update(rollouts)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, device)
         if args.log_evaluation:
-            writer.add_scalar('analysis/min_lr', min_lr, j)
-            writer.add_scalar('analysis/max_lr', max_lr, j)
+            writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
         rollouts.after_update()
 
 
