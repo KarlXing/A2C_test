@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from .kfac import KFACOptimizer
+from utils import modulate_lr
 
 
 class A2C_ACKTR():
@@ -45,10 +46,11 @@ class A2C_ACKTR():
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         advantages = rollouts.returns[:-1] - values
-        value_loss = (advantages.pow(2) * rollouts.g).mean()
 
-        action_loss = -(advantages.detach() * action_log_probs * rollouts.g).mean()
-        dist_entropy = (dist_entropy * rollouts.g).mean()
+        value_loss = (advantages.pow(2)).mean()
+        lr = modulate_lr(advantages, rollouts.entropys)
+        action_loss = -(advantages.detach() * action_log_probs * lr).mean()
+        dist_entropy = (dist_entropy).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
@@ -77,4 +79,4 @@ class A2C_ACKTR():
 
         self.optimizer.step()
 
-        return value_loss.item(), action_loss.item(), dist_entropy.item()
+        return value_loss.item(), action_loss.item(), dist_entropy.item(), torch.min(lr).item(), torch.max(lr).item()

@@ -94,13 +94,14 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
     # print key arguments
-    g = (torch.ones(args.num_processes, 1)).to(device)
+    # g = (torch.ones(args.num_processes, 1)).to(device)
+    entropys = torch.zeros(args.num_processes, 1)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size, 1.0)
+                        actor_critic.recurrent_hidden_state_size)
 
     obs = envs.reset()
     obs = obs_representation(obs, args.modulation, g, args.input_neuro)
@@ -123,21 +124,18 @@ def main():
                         rollouts.masks[step],
                         args.action_selection)
             obs, reward, done, infos = envs.step(action)
-
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g, args.input_neuro)
-
-            g = get_g_entropy(dist_entropy, g)
+            if j >= args.start_modualte:
+                next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
+                entropys = (1 - args.entropy_update) * (next_entropy.cpu().unsqueeze(1)) + args.entropy_update * entropys
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', dist_entropy[0], g_step)
-                writer.add_scalar('analysis/maxg', torch.max(g).item(), g_step)
-                writer.add_scalar('analysis/ming', torch.min(g).item(), g_step)
-                writer.add_scalar('analysis/meang', torch.mean(g).item(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
 
@@ -157,7 +155,7 @@ def main():
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
 
 
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, entropys)
 
         with torch.no_grad():
             masks_device.copy_(masks)
@@ -165,8 +163,10 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts)
-
+        value_loss, action_loss, dist_entropy, min_lr, max_lr = agent.update(rollouts)
+        if args.log_evaluation:
+            writer.add_scalar('analysis/min_lr', min_lr, j)
+            writer.add_scalar('analysis/max_lr', max_lr, j)
         rollouts.after_update()
 
 

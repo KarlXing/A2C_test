@@ -63,6 +63,12 @@ class Policy(nn.Module):
         value, _, _, _ = self.base(inputs, rnn_hxs, masks)
         return value
 
+    def get_uncertainty(self, inputs, rnn_hxs, masks):
+        _, actor_features, _, _ = self.base(inputs, rnn_hxs, masks)
+        dist = self.dist(actor_features)
+        return dist.entropy()
+
+
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
         value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
