@@ -95,7 +95,7 @@ def main():
                                args.entropy_coef, acktr=True)
     # print key arguments
     g = (torch.ones(args.num_processes, 1)).to(device)
-    entropys = torch.zeros(args.num_processes, 1)
+    entropys = torch.ones(args.num_processes, 1)
     #evaluations = torch.zeros(args.num_processes, 1)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
