@@ -10,7 +10,7 @@ class RolloutStorage(object):
     def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
         self.entropys = torch.zeros(num_steps, num_processes, 1)
-        self.lr = torch.zeros(num_steps, num_processes, 1)
+        self.lr = torch.ones(num_steps, num_processes, 1)
         self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)

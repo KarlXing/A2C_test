@@ -164,7 +164,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, device)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, device, j >= args.start_modulate)
         if args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
             writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)

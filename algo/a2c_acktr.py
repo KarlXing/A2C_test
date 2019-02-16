@@ -31,7 +31,7 @@ class A2C_ACKTR():
             self.optimizer = optim.RMSprop(
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
 
-    def update(self, rollouts, device):
+    def update(self, rollouts, device, modulation):
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
@@ -48,7 +48,8 @@ class A2C_ACKTR():
         advantages = rollouts.returns[:-1] - values
 
         value_loss = (advantages.pow(2)).mean()
-        rollouts.insert_lr(modulate_lr(advantages.detach(), rollouts.entropys, device))
+        if modulation:
+            rollouts.insert_lr(modulate_lr(advantages.detach(), rollouts.entropys, device))
         action_loss = -(advantages.detach() * action_log_probs * rollouts.lr).mean()
         dist_entropy = (dist_entropy).mean()
 
