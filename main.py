@@ -19,6 +19,7 @@ from storage import RolloutStorage
 from utils import get_vec_normalize, neuro_activity, obs_representation, get_g_entropy
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
+import math
 
 #####################################
 # prepare
@@ -107,7 +108,8 @@ def main():
     obs = obs_representation(obs, args.modulation, g, args.input_neuro)
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
-
+    pos_slope = (args.max_lr - 1) / math.log(envs.action_space.shape[0])
+    neg_slope = (1 - 1 / args.max_lr) / math.log(envs.action_space.shape[0])
     episode_rewards = deque(maxlen=10)
     #entropys = deque(maxlen=100)
     #mean_entropy = torch.tensor(0.0)
@@ -164,7 +166,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, device, j >= args.start_modulate)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, device, j >= args.start_modulate, pos_slope, neg_slope, args.max_lr)
         if args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
             writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)

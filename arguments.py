@@ -117,6 +117,8 @@ def get_args():
                         help='parameter used to update entropy and calculate beta')
     parser.add_argument('--start-modulate', type=int, default=0,
                         help='start to modulate learning rate')
+    parser.add_argument('--max-lr', type=float, default=1,
+                        help='the maximum modulated learning rate')
 
     args = parser.parse_args()
 
