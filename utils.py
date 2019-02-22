@@ -143,4 +143,4 @@ def obs_representation(obs, modulation, g_device, input_neuro):
 
 def modulate_lr(advantages, entropys, device, pos_slope, neg_slope, max_lr):
     exp_entropy = torch.exp(entropys)
-    return torch.mean(exp_entropy)/exp_entropy
+    return exp_entropy/torch.mean(exp_entropy)
