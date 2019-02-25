@@ -116,7 +116,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 def get_g_entropy(dist_entropy, g):
     num_processes = dist_entropy.shape[0]
     exp_entropy =torch.exp(dist_entropy)
-    g = (torch.exp(torch.sum(dist_entropy)/num_processes))/exp_entropy
+    g = torch.mean(exp_entropy)/exp_entropy
     return g.unsqueeze(1)
 
 
@@ -126,18 +126,5 @@ def neuro_activity(obs, g, mid = 128):
         obs[i] = (torch.tanh((obs[i]-mid)/g[i])+1)/2
     return obs
 
-def obs_representation(obs, modulation, g_device, input_neuro):
-    if modulation == 0:  # no modulation
-        if input_neuro:
-            obs = neuro_activity(obs, g_device)
-        else:
-            obs = obs/255
-    elif modulation == 1:  # input modulation
-        if input_neuro:
-            obs = neuro_activity(obs, g_device)
-        else:
-            obs = obs/255
-            obs = obs/g_device
-    else:  # f1 modulation
-        obs = obs/255
-    return obs
+def obs_representation(obs):
+    return obs/255

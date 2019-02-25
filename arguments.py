@@ -113,6 +113,8 @@ def get_args():
                         help='0: same learning rate, 1: high g, high lr, 2: high g, low lr')
     parser.add_argument('--action-selection', action='store_true', default=False,
                         help='whether use signal to affect action selection, no in default')
+    parser.add_argument('--start-modulate', type='float', default=0.02,
+                        help='when to start modulation')
 
     args = parser.parse_args()
 

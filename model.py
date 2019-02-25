@@ -12,7 +12,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, modulation, sync, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, sync, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
@@ -47,22 +47,22 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, action_selection, g, deterministic=False):
+    def act(self, inputs, rnn_hxs, masks, modulate, g, deterministic=False):
         value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
-        dist_entropy = dist.entropy()
+        dist_entropy_pre = dist.entropy()
         # g = get_g_entropy(device, dist_entropy, threshold, min_g, max_g, phasic_g, sigmoid_g, sigmoid_range, flip_g, g)
         g = get_g_entropy(dist_entropy, g)
-        if action_selection:
+        if modulate:
             dist = self.dist(actor_features, g)
-
+        dist_entropy_post = dist.entropy()
         if deterministic:
             action = dist.mode()
         else:
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
         # return entropy without modulation as signal, action_log_probs are not used yet
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, g
+        return value, action, action_log_probs, rnn_hxs, dist_entropy_pre, dist_entropy_post, g
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _, _ = self.base(inputs, rnn_hxs, masks)
