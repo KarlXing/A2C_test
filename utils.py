@@ -114,8 +114,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 #     return  g
 
 def get_g_entropy(dist_entropy, g):
-    num_processes = dist_entropy.shape[0]
-    exp_entropy =torch.exp(dist_entropy)
+    exp_entropy = torch.exp(dist_entropy)
     g = torch.mean(exp_entropy)/exp_entropy
     return g.unsqueeze(1)
 
