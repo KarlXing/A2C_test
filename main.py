@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode_entropy, neuro_activity, obs_representation
+from utils import get_vec_normalize, update_mode_entropy, neuro_activity
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -94,37 +94,15 @@ def main():
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
     # print key arguments
-    print("modulation type ", args.modulation)
-    if not args.input_neuro:
-        print("use normalized input")
-    else:
-        print("use neuro activity of input")
-    if args.modulation == 0:
-        tonic_g = 1.0
-        phasic_g = 1.0
-    elif args.modulation == 1:
-        tonic_g = args.neuro_input_tonic
-        phasic_g = args.neuro_input_phasic
-    elif args.modulation == 2:
-        if args.activation == 0:
-            tonic_g = args.relu_tonic
-            phasic_g = args.relu_phasic
-        else:
-            tonic_g = args.tanh_f1_tonic
-            phasic_g = args.tanh_f1_phasic
-    else:
-        print("invalid modulation")
-    print("tonic g is: ", tonic_g)
-    print("phasic g is: ", phasic_g)
     g_device = (torch.ones(args.num_processes, 1)).to(device)
     masks_device = torch.ones(args.num_processes, 1).to(device)
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size, tonic_g)
+                        actor_critic.recurrent_hidden_state_size, 1.0)
 
     obs = envs.reset()
-    obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+    obs = obs/255
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -147,7 +125,7 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g_device, args.input_neuro)
+            obs = obs/255
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
