@@ -96,6 +96,8 @@ def main():
     # print key arguments
     g_device = (torch.ones(args.num_processes, 1)).to(device)
     masks_device = torch.ones(args.num_processes, 1).to(device)
+    reward_count = 0
+    start_step = 0
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
@@ -127,11 +129,19 @@ def main():
 
             obs = obs/255
 
+            if reward[0] != 0:
+                reward_count += 1
+            # the log info is based on subprocess 0
             if args.log_evaluation:
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
+                if 'episode' in infos[0].keys():
+                    writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
+                    reward_count = 0
+                    start_step = g_step + 1
+
 
             for idx in range(len(infos)):
                 info = infos[idx]
