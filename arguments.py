@@ -115,6 +115,8 @@ def get_args():
                         help='whether use signal to affect action selection, no in default')
     parser.add_argument('--start-modulate', type=float, default=0.02,
                         help='when to start modulation')
+    parser.add_argument('--entropy-base', type=float, default=0.0,
+                        help='default 0.0 means epsilon, other wise use indicated value')
 
     args = parser.parse_args()
 

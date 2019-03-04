@@ -16,7 +16,7 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, neuro_activity, obs_representation
+from utils import get_vec_normalize, neuro_activity, obs_representation, calc_mean_entropy
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -110,7 +110,12 @@ def main():
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    start = time.time()
+
+    mean_entropy = None
+    entropys = []
+    for i in range(args.num_processes):
+        entropys.append(deque())
+
     g_step = 0
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -125,9 +130,12 @@ def main():
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
-                        modulate, g)
-            dist_entropy_pre = dist_entropy_pre.cpu().unsqueeze(1)
-            dist_entropy_post = dist_entropy_post.cpu().unsqueeze(1)
+                        modulate, g, mean_entropy, args.entropy_base)
+            dist_entropy_pre = dist_entropy_pre.cpu()
+            for i in range(args.num_processes):
+                entropys[i].append(dist_entropy_pre[i].item())
+
+            dist_entropy_post = dist_entropy_post.cpu()
 
             obs, reward, done, infos = envs.step(action)
 
@@ -142,6 +150,7 @@ def main():
                 elif args.dynamic_lr == 2:
                     g_device.copy_(1.0/g)
 
+
             if args.log_evaluation:
                 writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
@@ -150,8 +159,8 @@ def main():
                 writer.add_scalar('analysis/min_g', torch.min(g).item(), g_step)
                 writer.add_scalar('analysis/max_g', torch.max(g).item(), g_step)
                 writer.add_scalar('analysis/mean_g', torch.mean(g).item(), g_step)
-                writer.add_scalar('analysis/entropy_post', dist_entropy_post[0], g_step)
-                writer.add_scalar('analysis/entropy', dist_entropy_pre[0], g_step)
+                writer.add_scalar('analysis/entropy_post', dist_entropy_post[0].item(), g_step)
+                writer.add_scalar('analysis/entropy', dist_entropy_pre[0].item(), g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
             for idx in range(len(infos)):
@@ -167,7 +176,9 @@ def main():
                         save_model = actor_critic
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
-                        torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
+                        torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
+                    mean_entropy = calc_mean_entropy(entropys[idx])
+                    entropys[idx].clear()
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
 

@@ -113,10 +113,15 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 #                 g[i][0] = phasic_g if dist_entropy[i][0] > threshold else max(1/phasic_g, min_g)
 #     return  g
 
-def get_g_entropy(dist_entropy, g):
-    exp_entropy = torch.pow(10,dist_entropy)
+def get_g_entropy(dist_entropy, g, mean_entropy, entropy_base):
+    if mean_entropy is None:
+        return g
+    if base == 0.0:
+        exp_entropy = torch.exp(dist_entropy)
+    else:
+        exp_entropy = torch.pow(entropy_base, dist_entropy)
     reci_entropy = 1 / exp_entropy
-    g = reci_entropy / torch.mean(reci_entropy)
+    g = reci_entropy / mean_entropy
     return g.unsqueeze(1)
 
 
@@ -128,3 +133,13 @@ def neuro_activity(obs, g, mid = 128):
 
 def obs_representation(obs):
     return obs/255
+
+def calc_mean_entropy(entropys):
+    episode_entropys = torch.from_numpy(np.asarray(entropys))
+    if base == 0.0:
+        exp_entropy = torch.exp(episode_entropys)
+    else:
+        exp_entropy = torch.pow(entropy_base, episode_entropys)
+    return torch.mean(1/exp_entropy).item()
+
+
