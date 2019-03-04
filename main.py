@@ -116,7 +116,7 @@ def main():
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy, ratio = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
@@ -133,6 +133,7 @@ def main():
                 reward_count += 1
             # the log info is based on subprocess 0
             if args.log_evaluation:
+                writer.add_scalar('analysis/ratio', ratio, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 if done[0]:
