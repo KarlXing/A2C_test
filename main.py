@@ -177,7 +177,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))
-                    mean_entropy = calc_mean_entropy(entropys[idx])
+                    mean_entropy = calc_mean_entropy(entropys[idx], args.entropy_base)
                     entropys[idx].clear()
 
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)

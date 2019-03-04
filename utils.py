@@ -116,7 +116,7 @@ def update_mode(evaluations, masks, reward, value, next_value, tonic_g, phasic_g
 def get_g_entropy(dist_entropy, g, mean_entropy, entropy_base):
     if mean_entropy is None:
         return g
-    if base == 0.0:
+    if entropy_base == 0.0:
         exp_entropy = torch.exp(dist_entropy)
     else:
         exp_entropy = torch.pow(entropy_base, dist_entropy)
@@ -134,9 +134,9 @@ def neuro_activity(obs, g, mid = 128):
 def obs_representation(obs):
     return obs/255
 
-def calc_mean_entropy(entropys):
+def calc_mean_entropy(entropys, entropy_base):
     episode_entropys = torch.from_numpy(np.asarray(entropys))
-    if base == 0.0:
+    if entropy_base == 0.0:
         exp_entropy = torch.exp(episode_entropys)
     else:
         exp_entropy = torch.pow(entropy_base, episode_entropys)
