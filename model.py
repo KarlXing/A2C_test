@@ -60,9 +60,11 @@ class Policy(nn.Module):
             action = dist.mode()
         else:
             action = dist.sample()
+        mode_action = dist.mode()
+        same_action_ratio = torch.sum(action == mode_action).item()
         action_log_probs = dist.log_probs(action)
         # return entropy without modulation as signal, action_log_probs are not used yet
-        return value, action, action_log_probs, rnn_hxs, dist_entropy_pre, dist_entropy_post, g
+        return value, action, action_log_probs, rnn_hxs, dist_entropy_pre, dist_entropy_post, g, same_action_ratio
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _, _ = self.base(inputs, rnn_hxs, masks)

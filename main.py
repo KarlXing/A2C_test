@@ -121,7 +121,7 @@ def main():
             else:
                 modulate = False
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, dist_entropy_pre, dist_entropy_post, g = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, dist_entropy_pre, dist_entropy_post, g, ratio = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step],
@@ -143,6 +143,7 @@ def main():
                     g_device.copy_(1.0/g)
 
             if args.log_evaluation:
+                writer.add_scalar('analysis/ratio', ratio, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
 
                 writer.add_scalar('analysis/g', g[0].item(), g_step)
