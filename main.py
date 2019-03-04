@@ -133,7 +133,7 @@ def main():
                 reward_count += 1
             # the log info is based on subprocess 0
             if args.log_evaluation:
-                writer.add_scalar('analysis/ratio', ratio, g_step)
+                writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 if done[0]:
