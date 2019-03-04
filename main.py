@@ -143,7 +143,7 @@ def main():
                     g_device.copy_(1.0/g)
 
             if args.log_evaluation:
-                writer.add_scalar('analysis/ratio', ratio, g_step)
+                writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
 
                 writer.add_scalar('analysis/g', g[0].item(), g_step)
