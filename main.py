@@ -19,6 +19,7 @@ from storage import RolloutStorage
 from utils import get_vec_normalize, update_mode_entropy, neuro_activity
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
+from hashcode import HashingBonusEvaluator
 
 #####################################
 # prepare
@@ -93,7 +94,7 @@ def main():
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
-    # print key arguments
+
     g_device = (torch.ones(args.num_processes, 1)).to(device)
     masks_device = torch.ones(args.num_processes, 1).to(device)
     reward_count = 0
@@ -102,6 +103,12 @@ def main():
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size, 1.0)
+
+    # hash code and AE
+    hashbonus = HashingBonusEvaluator()
+    
+
+
 
     obs = envs.reset()
     obs = obs/255

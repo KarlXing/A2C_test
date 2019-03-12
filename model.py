@@ -266,3 +266,4 @@ class MLPBase(NNBase):
         hidden_actor = self.actor(x)
 
         return self.critic_linear(hidden_critic), hidden_actor, rnn_hxs
+
