@@ -109,7 +109,7 @@ def main():
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
     pos_slope = (args.max_lr - 1) / math.log(envs.action_space.n)
-    neg_slope = (1 - 1 / args.max_lr) / math.log(envs.action_space.n)
+    neg_slope = 1 / math.log(envs.action_space.n)
     episode_rewards = deque(maxlen=10)
     #entropys = deque(maxlen=100)
     #mean_entropy = torch.tensor(0.0)
@@ -123,15 +123,14 @@ def main():
                 value, action, action_log_prob, recurrent_hidden_states, dist_entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
-                        rollouts.masks[step],
-                        args.action_selection)
+                        rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
             # If done then clean the history of observations.
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
             obs = obs_representation(obs, args.modulation, g, args.input_neuro)
-            if j >= args.start_modulate:
+            if j >= args.start_modulate * num_updates:
                 with torch.no_grad():
                     next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
                     entropys = (1 - args.entropy_update) * (next_entropy.cpu().unsqueeze(1)) + args.entropy_update * entropys
@@ -166,7 +165,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, device, j >= args.start_modulate, pos_slope, neg_slope, args.max_lr)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, device, j >= args.start_modulate * num_updates, pos_slope, neg_slope, args.max_lr)
         if args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
             writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)

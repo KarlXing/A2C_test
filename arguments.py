@@ -115,9 +115,9 @@ def get_args():
                         help='whether use signal to affect action selection, no in default')
     parser.add_argument('--entropy-update', type=float, default=0.75,
                         help='parameter used to update entropy and calculate beta')
-    parser.add_argument('--start-modulate', type=int, default=0,
+    parser.add_argument('--start-modulate', type=float, default=0.01,
                         help='start to modulate learning rate')
-    parser.add_argument('--max-lr', type=float, default=1,
+    parser.add_argument('--max-lr', type=float, default=2,
                         help='the maximum modulated learning rate')
 
     args = parser.parse_args()
