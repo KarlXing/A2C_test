@@ -3,6 +3,7 @@ import glob
 import os
 import time
 from collections import deque
+import torch.optim as optim
 
 import gym
 import numpy as np
@@ -20,6 +21,7 @@ from utils import get_vec_normalize, update_mode_entropy, neuro_activity
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 from hashcode import HashingBonusEvaluator
+from autoencoder import CNNAutoEncoder
 
 #####################################
 # prepare
@@ -81,6 +83,11 @@ def main():
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
+    autoencoder = CNNAutoEncoder(envs.observation_space.shape[0], args.ae_hidden_size)
+    autoencoder.to(device)
+    ae_optimizer = optim.RMSprop(
+                autoencoder.parameters(), args.lr , eps=args.eps, alpha=args.alpha)
+
     if args.algo == 'a2c':
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, lr=args.lr,
@@ -102,13 +109,10 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size, 1.0)
+                        actor_critic.recurrent_hidden_state_size)
 
     # hash code and AE
-    hashbonus = HashingBonusEvaluator()
-    
-
-
+    hashbonus = HashingBonusEvaluator(args.ae_hidden_size)
 
     obs = envs.reset()
     obs = obs/255
@@ -130,26 +134,30 @@ def main():
             ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-
+            obs = obs/255
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs/255
+            with torch.no_grad():
+                repre = autoencoder.encode(obs).cpu()
+                hashbonus.inc_hash(repre)
+                bonus = torch.from_numpy(hashbonus.predict(repre)).unsqueeze(1)
 
-            if reward[0] != 0:
-                reward_count += 1
+            combined_reward = reward + bonus
+            # if reward[0] != 0:
+            #     reward_count += 1
             # the log info is based on subprocess 0
             if args.log_evaluation:
-                writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
+                # writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
-                if done[0]:
-                    writer.add_scalar('analysis/done', 1, g_step)
-                if 'episode' in infos[0].keys():
-                    writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
-                    reward_count = 0
-                    start_step = g_step + 1
-
+                writer.add_scalar('analysis/bonus', bonus[0], g_step)
+                # if done[0]:
+                #     writer.add_scalar('analysis/done', 1, g_step)
+                # if 'episode' in infos[0].keys():
+                #     writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
+                #     reward_count = 0
+                #     start_step = g_step + 1
 
             for idx in range(len(infos)):
                 info = infos[idx]
@@ -166,7 +174,7 @@ def main():
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
             assert(torch.sum(g_device).item() == args.num_processes)
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, combined_reward, masks, g_device)
 
         with torch.no_grad():
             masks_device.copy_(masks)
@@ -177,6 +185,19 @@ def main():
         value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
         rollouts.after_update()
+
+        # update autoencoder
+        if j % args.ae_update == 0:
+            samples = rollouts.obs_pool_sample(args.ae_sample_size)
+            if samples is not None:
+                outputs, repre = autoencoder(samples, torch.cuda.FloatTensor(args.ae_sample_size, args.ae_hidden_size).uniform_(-args.ae_noise_range, args.ae_noise_range))
+                outputs_error = (outputs - samples).pow(2).mean()
+                bias_error = torch.min(repre, 1-repre).pow(2).mean()
+                ae_optimizer.zero_grad()
+                (outputs_error + args.ae_lambda * bias_error).backward()
+                ae_optimizer.step()
+                writer.add_scalar('analysis/outputs_error', outputs_error.item(), g_step)
+                writer.add_scalar('analysis/bias_error', bias_error.item(), g_step)
 
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()

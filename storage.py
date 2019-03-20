@@ -1,15 +1,15 @@
 import torch
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
-
+from collections import deque
 
 def _flatten_helper(T, N, _tensor):
     return _tensor.view(T * N, *_tensor.size()[2:])
 
 
 class RolloutStorage(object):
-    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, tonic_g):
+    def __init__(self, num_steps, num_processes, obs_shape, action_space, recurrent_hidden_state_size, pool_size):
         self.obs = torch.zeros(num_steps + 1, num_processes, *obs_shape)
-        self.g = torch.ones(num_steps, num_processes, 1)*tonic_g
+        self.g = torch.ones(num_steps, num_processes, 1)
         self.recurrent_hidden_states = torch.zeros(num_steps + 1, num_processes, recurrent_hidden_state_size)
         self.rewards = torch.zeros(num_steps, num_processes, 1)
         self.value_preds = torch.zeros(num_steps + 1, num_processes, 1)
@@ -23,9 +23,12 @@ class RolloutStorage(object):
         if action_space.__class__.__name__ == 'Discrete':
             self.actions = self.actions.long()
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
-
         self.num_steps = num_steps
         self.step = 0
+        self.obs_pool = torch.zeros(pool_size, *obs_shape)
+        self.obs_pool_pos = 0
+        self.obs_pool_filled = 0
+        self.obs_pool_size = pool_size
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -37,6 +40,7 @@ class RolloutStorage(object):
         self.action_log_probs = self.action_log_probs.to(device)
         self.actions = self.actions.to(device)
         self.masks = self.masks.to(device)
+        self.obs_pool = self.obs_pool.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, g):
         self.obs[self.step + 1].copy_(obs)
@@ -47,8 +51,26 @@ class RolloutStorage(object):
         self.value_preds[self.step].copy_(value_preds)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
-
         self.step = (self.step + 1) % self.num_steps
+        # insert obs to pool
+        if self.obs_pool_pos + obs.shape[0] <= self.obs_pool.shape[0]:  # can load once
+            self.obs_pool[self.obs_pool_pos, self.obs_pool_pos + obs.shape[0]].copy_(obs)
+            self.obs_pool_pos = (self.obs_pool_pos + obs.shape[0]) % self.obs_pool.shape[0]
+        else:
+            first_load = self.obs_pool.shape[0] - self.obs_pool_pos  # load twice
+            self.obs_pool[self.obs_pool_pos:].copy_(obs[:first_load])
+            self.obs_pool[:obs.shape[0]-first_load].copy_(obs[first_load:])
+            self.obs_pool_pos = obs.shape[0]-first_load
+
+        self.obs_pool_filled = min(self.obs_pool_filled + obs.shape[0], self.obs_pool.shape[0])
+
+
+    def obs_pool_sample(num_samples):
+        if self.obs_pool_filled < num_samples:
+            num_samples = self.obs_pool_filled
+        idx = torch.randint(0, self.obs_pool_filled, (num_samples,1)).type(torch.LongTensor).view(num_samples)
+        samples = self.obs_pool[idx]
+        return samples
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
@@ -149,3 +171,4 @@ class RolloutStorage(object):
 
             yield obs_batch, recurrent_hidden_states_batch, actions_batch, \
                 value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, adv_targ
+

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class CNNAutoEncoder(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, num_inputs, hidden_size):
         super(CNNAutoEncoder, self).__init__()
         init_relu = lambda m: init(m,
             nn.init.orthogonal_,
@@ -27,12 +27,15 @@ class CNNAutoEncoder(nn.Module):
         self.dc3 = init_sigmoid(nn.ConvTranspose2d(32, 1, 8, stride = 4))
 
 
-    def encode(self, inputs, noise):
+    def encode(self, inputs, noise = None):
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
-        x = F.sigmoid(self.f1(x) + noise)
+        if noise is None:
+            x = F.sigmoid(self.f1(x))
+        else:
+            x = F.sigmoid(self.f1(x) + noise)
         return x
 
     def decode(self, repre):
@@ -44,7 +47,7 @@ class CNNAutoEncoder(nn.Module):
         return x
 
     def forward(self, input, noise):
-        x = self.encode(inputs, noise)
-        x = self.decode(x)
-        return x
+        repre = self.encode(inputs, noise)
+        x = self.decode(repre)
+        return x, repre
 

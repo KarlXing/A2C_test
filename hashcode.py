@@ -8,7 +8,7 @@ class HashingBonusEvaluator(object):
     In Advances in Neural Information Processing Systems (NIPS)
     """
 
-    def __init__(self, dim_key=128, obs_processed_flat_dim=None, bucket_sizes=None):
+    def __init__(self, obs_processed_flat_dim, dim_key=128, bucket_sizes=None):
         # Hashing function: SimHash
         if bucket_sizes is None:
             # Large prime numbers

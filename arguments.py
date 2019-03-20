@@ -101,6 +101,16 @@ def get_args():
                         help='remove abstract of evaluations')
     parser.add_argument('--sigmoid', action='store_true', default=False,
                         help='use sigmoid for g update')
+    parser.add_argument('--ae-update', type=int, default=1,
+                        help='autoencoder update frequency compared with actor critic')
+    parser.add_argument('--ae-sample-size', type=int, default=64,
+                        help='autoencoder sample size for each training')
+    parser.add_argument('--ae-hidden-size', type=int, default=256,
+                        help='size of representation in autoencoder')
+    parser.add_argument('--ae-noise-range', type=float, default=0.3,
+                        help='autoencoder noise range uniform(-0.3, 0.3) in default')
+    parser.add_argument('--ae-lambda', type=float, default=0.05,
+                        help='parameter in autoencoder loss function')
 
     args = parser.parse_args()
 
