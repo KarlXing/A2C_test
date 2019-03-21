@@ -83,7 +83,7 @@ def main():
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
-    autoencoder = CNNAutoEncoder(envs.observation_space.shape[0], args.ae_hidden_size)
+    autoencoder = CNNAutoEncoder(1, args.ae_hidden_size)
     autoencoder.to(device)
     ae_optimizer = optim.RMSprop(
                 autoencoder.parameters(), args.lr , eps=args.eps, alpha=args.alpha)
@@ -139,9 +139,9 @@ def main():
                                        for done_ in done])
 
             with torch.no_grad():
-                repre = autoencoder.encode(obs).cpu()
+                repre = autoencoder.encode(obs[:,3:4]).cpu()
                 hashbonus.inc_hash(repre)
-                bonus = torch.from_numpy(hashbonus.predict(repre)).unsqueeze(1).type(torch.FloatTensor)
+                bonus, count = torch.from_numpy(hashbonus.predict(repre)).unsqueeze(1).type(torch.FloatTensor)
 
             combined_reward = reward + bonus
             # if reward[0] != 0:
@@ -152,6 +152,7 @@ def main():
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 writer.add_scalar('analysis/bonus', bonus[0], g_step)
+                writer.add_scalar('analysis/count', count[0], g_step)
                 # if done[0]:
                 #     writer.add_scalar('analysis/done', 1, g_step)
                 # if 'episode' in infos[0].keys():

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utils import init
 
 class CNNAutoEncoder(nn.Module):
     def __init__(self, num_inputs, hidden_size):

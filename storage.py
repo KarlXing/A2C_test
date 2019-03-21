@@ -25,7 +25,7 @@ class RolloutStorage(object):
         self.masks = torch.ones(num_steps + 1, num_processes, 1)
         self.num_steps = num_steps
         self.step = 0
-        self.obs_pool = torch.zeros(pool_size, *obs_shape)
+        self.obs_pool = torch.zeros(pool_size, 1, *(obs_shape[1:]))
         self.obs_pool_pos = 0
         self.obs_pool_filled = 0
         self.obs_pool_size = pool_size
@@ -54,12 +54,12 @@ class RolloutStorage(object):
         self.step = (self.step + 1) % self.num_steps
         # insert obs to pool
         if self.obs_pool_pos + obs.shape[0] <= self.obs_pool.shape[0]:  # can load once
-            self.obs_pool[self.obs_pool_pos:self.obs_pool_pos + obs.shape[0]].copy_(obs)
+            self.obs_pool[self.obs_pool_pos:self.obs_pool_pos + obs.shape[0]].copy_(obs[:,3:4])
             self.obs_pool_pos = (self.obs_pool_pos + obs.shape[0]) % self.obs_pool.shape[0]
         else:
             first_load = self.obs_pool.shape[0] - self.obs_pool_pos  # load twice
-            self.obs_pool[self.obs_pool_pos:].copy_(obs[:first_load])
-            self.obs_pool[:obs.shape[0]-first_load].copy_(obs[first_load:])
+            self.obs_pool[self.obs_pool_pos:].copy_(obs[:first_load, 3:4])
+            self.obs_pool[:obs.shape[0]-first_load].copy_(obs[first_load:, 3:4])
             self.obs_pool_pos = obs.shape[0]-first_load
 
         self.obs_pool_filled = min(self.obs_pool_filled + obs.shape[0], self.obs_pool.shape[0])

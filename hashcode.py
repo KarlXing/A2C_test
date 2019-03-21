@@ -53,4 +53,4 @@ class HashingBonusEvaluator(object):
 
     def predict(self, obs):
         counts = self.query_hash(obs)
-        return 1. / np.maximum(1., np.sqrt(counts))
+        return 1. / np.maximum(1., np.sqrt(counts)), counts
