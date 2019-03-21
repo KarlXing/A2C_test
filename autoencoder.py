@@ -46,7 +46,7 @@ class CNNAutoEncoder(nn.Module):
         x = F.sigmoid(self.dc3(x))
         return x
 
-    def forward(self, input, noise):
+    def forward(self, inputs, noise):
         repre = self.encode(inputs, noise)
         x = self.decode(repre)
         return x, repre

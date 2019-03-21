@@ -111,6 +111,8 @@ def get_args():
                         help='autoencoder noise range uniform(-0.3, 0.3) in default')
     parser.add_argument('--ae-lambda', type=float, default=0.05,
                         help='parameter in autoencoder loss function')
+    parser.add_argument('--ae-pool-size', type=int, default=10000,
+                        help='size of obs pool for autoencoder')
 
     args = parser.parse_args()
 

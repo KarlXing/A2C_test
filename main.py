@@ -109,7 +109,7 @@ def main():
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size)
+                        actor_critic.recurrent_hidden_state_size, 10000)
 
     # hash code and AE
     hashbonus = HashingBonusEvaluator(args.ae_hidden_size)
@@ -141,7 +141,7 @@ def main():
             with torch.no_grad():
                 repre = autoencoder.encode(obs).cpu()
                 hashbonus.inc_hash(repre)
-                bonus = torch.from_numpy(hashbonus.predict(repre)).unsqueeze(1)
+                bonus = torch.from_numpy(hashbonus.predict(repre)).unsqueeze(1).type(torch.FloatTensor)
 
             combined_reward = reward + bonus
             # if reward[0] != 0:
@@ -196,7 +196,7 @@ def main():
                 ae_optimizer.zero_grad()
                 (outputs_error + args.ae_lambda * bias_error).backward()
                 ae_optimizer.step()
-                writer.add_scalar('analysis/outputs_error', outputs_error.item(), g_step)
+                writer.add_scalar('analysis/outputs_error', (outputs - samples).mean().item(), g_step)
                 writer.add_scalar('analysis/bias_error', bias_error.item(), g_step)
 
     writer.export_scalars_to_json("./all_scalars.json")

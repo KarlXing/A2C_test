@@ -54,7 +54,7 @@ class RolloutStorage(object):
         self.step = (self.step + 1) % self.num_steps
         # insert obs to pool
         if self.obs_pool_pos + obs.shape[0] <= self.obs_pool.shape[0]:  # can load once
-            self.obs_pool[self.obs_pool_pos, self.obs_pool_pos + obs.shape[0]].copy_(obs)
+            self.obs_pool[self.obs_pool_pos:self.obs_pool_pos + obs.shape[0]].copy_(obs)
             self.obs_pool_pos = (self.obs_pool_pos + obs.shape[0]) % self.obs_pool.shape[0]
         else:
             first_load = self.obs_pool.shape[0] - self.obs_pool_pos  # load twice
@@ -65,7 +65,7 @@ class RolloutStorage(object):
         self.obs_pool_filled = min(self.obs_pool_filled + obs.shape[0], self.obs_pool.shape[0])
 
 
-    def obs_pool_sample(num_samples):
+    def obs_pool_sample(self, num_samples):
         if self.obs_pool_filled < num_samples:
             num_samples = self.obs_pool_filled
         idx = torch.randint(0, self.obs_pool_filled, (num_samples,1)).type(torch.LongTensor).view(num_samples)
