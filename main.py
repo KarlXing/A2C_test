@@ -136,6 +136,9 @@ def main():
                 writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
                 writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
+                writer.add_scalar('analysis/xmin', xmin, g_step)
+                writer.add_scalar('analysis/xmax', xmax, g_step)
+                writer.add_scalar('analysis/xmean', xmean, g_step)
                 if done[0]:
                     writer.add_scalar('analysis/done', 1, g_step)
                 if 'episode' in infos[0].keys():
