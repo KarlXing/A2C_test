@@ -16,16 +16,15 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode_entropy, neuro_activity
+from utils import get_vec_normalize, neuro_activity, obs_representation
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
+import math
 
 #####################################
 # prepare
 
 args = get_args()
-
-num_updates = int(args.num_frames) // args.num_steps // args.num_processes
 
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -52,28 +51,29 @@ def main():
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
-    agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
-                               args.entropy_coef, lr=args.lr,
-                               eps=args.eps, alpha=args.alpha,
-                               max_grad_norm=args.max_grad_norm)
+    # agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
+    #                            args.entropy_coef, lr=args.lr,
+    #                            eps=args.eps, alpha=args.alpha,
+    #                            max_grad_norm=args.max_grad_norm)
 
-    rollouts = RolloutStorage(args.num_steps, args.num_processes,
-                        observation_space_shape, action_space,
-                        actor_critic.recurrent_hidden_state_size, 1.0)
+    # rollouts = RolloutStorage(args.num_steps, args.num_processes,
+    #                     observation_space_shape, action_space,
+    #                     actor_critic.recurrent_hidden_state_size, 1.0)
 
-    obs = torch.rand(32,4,210,160)
+
+    obs = torch.rand(32,4,210,160).to(device)
     obs = obs/255
-    rollouts.obs[0].copy_(obs)
-    rollouts.to(device)
+    recurrent_hidden_states = torch.zeros(args.num_processes, 1)
+    masks = torch.ones(args.num_processes, 1)
 
-    for j in range(num_updates):
+    while(True):
         time.sleep(args.sleep)
         for step in range(args.num_steps):
             with torch.no_grad():
                 value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy, ratio = actor_critic.act(
-                        rollouts.obs[0],
-                        rollouts.recurrent_hidden_states[0],
-                        rollouts.masks[0])
+                        obs,
+                        recurrent_hidden_states,
+                        masks)
 
 
 if __name__ == "__main__":
