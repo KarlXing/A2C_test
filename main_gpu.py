@@ -70,7 +70,7 @@ def main():
         time.sleep(args.sleep)
         for step in range(args.num_steps):
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy, ratio = actor_critic.act(
+                actor_critic.act(
                         obs,
                         recurrent_hidden_states,
                         masks)
