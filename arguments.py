@@ -119,6 +119,8 @@ def get_args():
                         help='start to modulate learning rate')
     parser.add_argument('--max-lr', type=float, default=2,
                         help='the maximum modulated learning rate')
+    parser.add_argument('--sleep', type=float, default=0.1,
+                        help='sleep time for main_gpu')
 
     args = parser.parse_args()
 
