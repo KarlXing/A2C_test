@@ -101,6 +101,8 @@ def get_args():
                         help='remove abstract of evaluations')
     parser.add_argument('--sigmoid', action='store_true', default=False,
                         help='use sigmoid for g update')
+    parser.add_argument('--sleep', type=float, default=0.1,
+                        help='sleep time in increasing gpu usage')
 
     args = parser.parse_args()
 
