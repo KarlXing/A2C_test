@@ -12,7 +12,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, modulation, sync, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
