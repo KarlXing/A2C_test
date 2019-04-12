@@ -105,7 +105,7 @@ def main():
                         actor_critic.recurrent_hidden_state_size)
 
     obs = envs.reset()
-    obs = obs_representation(obs, args.modulation, g, args.input_neuro)
+    obs = obs/255
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
     pos_slope = (args.max_lr - 1) / math.log(envs.action_space.n)
@@ -129,7 +129,7 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs_representation(obs, args.modulation, g, args.input_neuro)
+            obs = obs/255
             if j >= args.start_modulate * num_updates:
                 # with torch.no_grad():
                 #     next_entropy = actor_critic.get_uncertainty(obs, recurrent_hidden_states, masks)
@@ -169,6 +169,8 @@ def main():
         if args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
             writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/std_lr', torch.std(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.lr).item(), j)
         rollouts.after_update()
 
 
