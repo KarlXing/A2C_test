@@ -182,26 +182,8 @@ class CNNBase(NNBase):
         self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-        self.f1_c = init_(nn.Linear(11264, hidden_size))
+        self.f1 = init_(nn.Linear(11264, hidden_size))
         
-        if self.activation == 0:
-            self.f1_a = init_(nn.Linear(11264, hidden_size))
-            print("Use relu activation for f1 layer")
-        elif self.activation == 1:
-            init_ = lambda m: init(m,
-                nn.init.orthogonal_,
-                lambda x: nn.init.constant_(x, 0),
-                nn.init.calculate_gain('tanh'))
-            self.f1_a = init_(nn.Linear(11264, hidden_size))
-            print("Use tanh activation for f1 layer")
-        else:
-            init_ = lambda m: init(m,
-                nn.init.orthogonal_,
-                lambda x: nn.init.constant_(x, 0),
-                nn.init.calculate_gain('sigmoid'))
-            self.f1_a = init_(nn.Linear(11264, hidden_size))
-            print("Use sigmoid activation for f1 layer")
-
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
@@ -214,18 +196,12 @@ class CNNBase(NNBase):
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
-        critic_x = F.relu(self.f1_c(x))
-        actor_x = self.f1_a(x)
+        f_x = F.relu(self.f1(x))
 
         if self.is_recurrent:
-            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
+            f_x, rnn_hxs = self._forward_gru(f_x, rnn_hxs, masks)
 
-        if self.activation == 0:
-            return self.critic_linear(critic_x), F.relu(actor_x), rnn_hxs, actor_x
-        elif self.activation == 1:
-            return self.critic_linear(critic_x), torch.tanh(actor_x), rnn_hxs, actor_x
-        else:
-            return self.critic_linear(critic_x), F.sigmoid(actor_x), rnn_hxs, actor_x
+        return self.critic_linear(f_x), f_x, rnn_hxs, x
 
 # class CNNBase2(NNBase):
 #     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
