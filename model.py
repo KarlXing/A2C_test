@@ -183,7 +183,7 @@ class CNNBase(NNBase):
         self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-        self.f1 = init_(nn.Linear(11264, hidden_size))
+        self.f1 = init_(nn.Linear(1568, hidden_size))
         
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
