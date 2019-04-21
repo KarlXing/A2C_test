@@ -128,25 +128,17 @@ class ClipRewardEnv(gym.RewardWrapper):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)
 
-class ScaleRewardEnv(gym.Wrapper):
+class ScaleRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
-        gym.Wrapper.__init__(self, env)
-        # record max reward and min reward to do reward scaling (reward not penalty, assumes > 0)
-        self.min_pos_reward = float('inf')
-        self.max_pos_reward = float('-inf')
+        gym.RewardWrapper.__init__(self, env)
+        self.min_abs_reward = float('inf')
 
-    def step(self, action):
-        """Repeat action, sum reward, and max over last observations."""
-        obs, reward, done, info = self.env.step(action)
-        if reward > 0:
-            self.min_pos_reward = min(self.min_pos_reward, reward)
-            self.max_pos_reward = max(self.max_pos_reward, reward)
-            reward = reward/self.min_pos_reward
-
-        return obs, reward, done, info
-
-    def reset(self, **kwargs):
-        return self.env.reset(**kwargs)
+    def reward(self, reward):
+        """Bin reward to {+1, 0, -1} by its sign."""
+        if reward == 0:
+            return reward
+        self.min_abs_reward = min(self.min_abs_reward, abs(reward))
+        return reward/self.min_abs_reward
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env):
