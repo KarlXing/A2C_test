@@ -18,7 +18,7 @@ class Policy(nn.Module):
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape[0], activation=activation, **base_kwargs)
+            self.base = CNNBase(obs_shape, activation=activation, **base_kwargs)
             #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -171,18 +171,20 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, activation, recurrent=False, hidden_size=512):
+    def __init__(self, obs_shape, activation, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
+        num_inputs = obs_shape[0]
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0),
             nn.init.calculate_gain('relu'))
 
+        flatten_size = get_flatten_size(obs_shape)
         self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-        self.f1 = init_(nn.Linear(11264, hidden_size))
+        self.f1 = init_(nn.Linear(flatten_size, hidden_size))
         
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -203,67 +205,14 @@ class CNNBase(NNBase):
 
         return self.critic_linear(f_x), f_x, rnn_hxs, x
 
-# class CNNBase2(NNBase):
-#     def __init__(self, num_inputs, activation, sync, recurrent=False, hidden_size=512):
-#         super(CNNBase2, self).__init__(recurrent, hidden_size, hidden_size)
-#         self.activation = activation
-#         self.sync = sync
-#         init_ = lambda m: init(m,
-#             nn.init.orthogonal_,
-#             lambda x: nn.init.constant_(x, 0),
-#             nn.init.calculate_gain('relu'))
+    def get_flatten_size(self, obs_shape):
+        inputs = torch.random(1, *obs_shape)
+        x = F.relu(self.conv1(inputs))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        return x.shape[-1]
 
-#         self.conv1 = init_(nn.Conv2d(num_inputs, 32, 8, stride=4))
-#         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
-#         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
-#         if self.activation == 0:
-#             self.f1 = init_(nn.Linear(9216, hidden_size))
-#             print("Use relu activation for f1 layer")
-#         elif self.activation == 1:
-#             init_ = lambda m: init(m,
-#                 nn.init.orthogonal_,
-#                 lambda x: nn.init.constant_(x, 0),
-#                 nn.init.calculate_gain('tanh'))
-#             self.f1 = init_(nn.Linear(9216, hidden_size))
-#             print("Use tanh activation for f1 layer")
-#         else:
-#             init_ = lambda m: init(m,
-#                 nn.init.orthogonal_,
-#                 lambda x: nn.init.constant_(x, 0),
-#                 nn.init.calculate_gain('sigmoid'))
-#             self.f1 = init_(nn.Linear(9216, hidden_size))
-
-#         init_ = lambda m: init(m,
-#             nn.init.orthogonal_,
-#             lambda x: nn.init.constant_(x, 0))
-
-#         self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-#         self.train()
-
-#     def forward(self, inputs, g, rnn_hxs, masks):
-#         x = F.relu(self.conv1(inputs))
-#         x = F.relu(self.conv2(x))
-#         x = F.relu(self.conv3(x))
-#         x = x.view(x.size(0), -1)
-
-#         x = self.f1(x)
-
-#         if self.is_recurrent:
-#             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
-#         if self.sync:
-#             if self.activation == 0:
-#                 return self.critic_linear(F.relu(x/g)), F.relu(x*g), rnn_hxs, x
-#             else:
-#                 return self.critic_linear(F.relu(x/g)), torch.tanh(x*g), rnn_hxs, x
-#         else:
-#             if self.activation == 0:
-#                 return self.critic_linear(F.relu(x)), F.relu(x*g), rnn_hxs, x
-#             elif self.activation == 1:
-#                 return self.critic_linear(F.relu(x)), torch.tanh(x*g), rnn_hxs, x
-#             else:
-#                 return self.critic_linear(F.relu(x), F.sigmoid(x*g), rnn_hxs, x)
 
 class MLPBase(NNBase):
     def __init__(self, num_inputs, recurrent=False, hidden_size=64):
