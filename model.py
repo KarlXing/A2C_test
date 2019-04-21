@@ -185,7 +185,7 @@ class CNNBase(NNBase):
         self.conv2 = init_(nn.Conv2d(32, 64, 4, stride=2))
         self.conv3 = init_(nn.Conv2d(64, 32, 3, stride=1))
 
-        inputs = torch.random(1, *obs_shape)
+        inputs = torch.rand(1, *obs_shape)
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
