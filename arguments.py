@@ -103,6 +103,8 @@ def get_args():
                         help='use sigmoid for g update')
     parser.add_argument('--sleep', type=float, default=0.1,
                         help='sleep time in increasing gpu usage')
+    parser.add_argument('--track-reward', action='store_true', default=False,
+                        help='whether to track the first time that a new reward occurs')
 
     args = parser.parse_args()
 

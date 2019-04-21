@@ -111,6 +111,7 @@ def main():
     episode_rewards = deque(maxlen=10)
     start = time.time()
     g_step = 0
+    reward_history = []
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -123,6 +124,12 @@ def main():
             ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+
+            if args.track_reward:
+                for r in reward:
+                    if r not in reward_history:
+                        print(r, g_step)
+                        reward_history.append(r)
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])

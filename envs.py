@@ -54,7 +54,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
 
         if is_atari:
             if new_wrapper:
-                env = wrap_carl_full(env)
+                env = wrap_carl_full(env, scale_rewards=False, clip_rewards=True)
             else:
                 env = wrap_deepmind(env)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
