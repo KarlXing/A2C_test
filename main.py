@@ -111,8 +111,8 @@ def main():
     episode_rewards = deque(maxlen=10)
     start = time.time()
     g_step = 0
-    reward_history = {}
-    primitive_reward_history = {}
+    reward_history = set()
+    primitive_reward_history = set()
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
