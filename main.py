@@ -111,7 +111,8 @@ def main():
     episode_rewards = deque(maxlen=10)
     start = time.time()
     g_step = 0
-    reward_history = []
+    reward_history = {}
+    primitive_reward_history = {}
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -125,11 +126,6 @@ def main():
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            if args.track_reward:
-                for r in reward:
-                    if r not in reward_history:
-                        print(r, g_step)
-                        reward_history.append(r)
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -140,18 +136,30 @@ def main():
                 reward_count += 1
             # the log info is based on subprocess 0
             if args.log_evaluation:
-                writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
-                writer.add_scalar('analysis/reward', reward[0], g_step)
+                # writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
+                # writer.add_scalar('analysis/reward', reward[0], g_step)
                 writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
                 # writer.add_scalar('analysis/xmin', xmin, g_step)
                 # writer.add_scalar('analysis/xmax', xmax, g_step)
                 # writer.add_scalar('analysis/xmean', xmean, g_step)
-                if done[0]:
-                    writer.add_scalar('analysis/done', 1, g_step)
-                if 'episode' in infos[0].keys():
-                    writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
-                    reward_count = 0
-                    start_step = g_step + 1
+                # if done[0]:
+                #     writer.add_scalar('analysis/done', 1, g_step)
+                # if 'episode' in infos[0].keys():
+                #     writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
+                #     reward_count = 0
+                #     start_step = g_step + 1
+                for info in infos:
+                    if 'new_reward' in info:
+                        new_rewards  = info['new_reward'] - primitive_reward_history
+                        if len(new_rewards) > 0:
+                            print('new primitive rewards: ', new_rewards, ' time: ', g_step)
+                            primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
+
+            if args.track_reward:
+                for r in reward:
+                    if r not in reward_history:
+                        print('new step rewards: ', r, g_step)
+                        reward_history.add(r)
 
 
             for idx in range(len(infos)):
