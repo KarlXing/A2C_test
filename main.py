@@ -157,6 +157,7 @@ def main():
 
             if args.track_reward:
                 for r in reward:
+                    r = r.item()
                     if r not in reward_history:
                         print('new step rewards: ', r, g_step)
                         reward_history.add(r)
