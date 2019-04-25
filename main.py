@@ -73,8 +73,12 @@ def main():
         viz = Visdom(port=args.port)
         win = None
 
+    if args.reward_mode == 0:
+        clip_rewards = True
+    else:
+        clip_rewards = False
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper)
+                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -113,6 +117,7 @@ def main():
     g_step = 0
     reward_history = set()
     primitive_reward_history = set()
+    min_abs_reward = float('inf')
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -125,7 +130,17 @@ def main():
             ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
-
+            if reward_mode == 1:
+                reward = reward * args.reward_scale
+            elif reward_mode == 2:
+                non_zeros = abs(reward[reward != 0])
+                if len(non_zeros) > 0:
+                    min_abs_reward_step = torch.min(non_zeros).item()
+                    if min_abs_reward > min_abs_reward_step:
+                        min_abs_reward = min_abs_reward_step
+                        print('new min abs reward: ', min_abs_reward, ' time: ', g_step)
+                if min_abs_reward != float('inf'):
+                    reward = reward/min_abs_reward
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
