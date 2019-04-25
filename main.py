@@ -130,9 +130,9 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
             obs, reward, done, infos = envs.step(action)
-            if reward_mode == 1:
+            if args.reward_mode == 1:
                 reward = reward * args.reward_scale
-            elif reward_mode == 2:
+            elif args.reward_mode == 2:
                 non_zeros = abs(reward[reward != 0])
                 if len(non_zeros) > 0:
                     min_abs_reward_step = torch.min(non_zeros).item()
