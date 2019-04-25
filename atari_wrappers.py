@@ -99,6 +99,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         # most recent raw observations (for max pooling across time steps)
         self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=np.uint8)
         self._skip       = skip
+        self.rewards = set()
 
     def step(self, action):
         """Repeat action, sum reward, and max over last observations."""
@@ -109,6 +110,12 @@ class MaxAndSkipEnv(gym.Wrapper):
             if i == self._skip - 2: self._obs_buffer[0] = obs
             if i == self._skip - 1: self._obs_buffer[1] = obs
             total_reward += reward
+            if reward not in self.rewards:
+                self.rewards.add(reward)
+                if 'new_reward' in info:
+                    info['new_reward'].add(reward)
+                else:
+                    info['new_reward'] = {reward}
             if done:
                 break
         # Note that the observation on the done=True frame
@@ -128,25 +135,6 @@ class ClipRewardEnv(gym.RewardWrapper):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)
 
-class ScaleRewardEnv(gym.Wrapper):
-    def __init__(self, env):
-        gym.Wrapper.__init__(self, env)
-        # record max reward and min reward to do reward scaling (reward not penalty, assumes > 0)
-        self.min_pos_reward = float('inf')
-        self.max_pos_reward = float('-inf')
-
-    def step(self, action):
-        """Repeat action, sum reward, and max over last observations."""
-        obs, reward, done, info = self.env.step(action)
-        if reward > 0:
-            self.min_pos_reward = min(self.min_pos_reward, reward)
-            self.max_pos_reward = max(self.max_pos_reward, reward)
-            reward = reward/self.min_pos_reward
-
-        return obs, reward, done, info
-
-    def reset(self, **kwargs):
-        return self.env.reset(**kwargs)
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env):
@@ -162,18 +150,13 @@ class WarpFrame(gym.ObservationWrapper):
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[:, :, None]
 
-class WarpFrameCarl(gym.ObservationWrapper):
+
+class WarpFrameCarlFull(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
-        self.width = 160
-        self.height = 172
-        self.observation_space = spaces.Box(low=0, high=255,
-            shape=(self.height, self.width, 1), dtype=np.uint8)
 
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        frame = frame[:172,:]
-        #frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
         return frame[:,:,None]
 
 
@@ -288,38 +271,18 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
         env = FrameStack(env, 4)
     return env
 
-def wrap_carl(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari with scale rewards
+def wrap_carl_full(env, episode_life=True, clip_rewards=False, frame_stack=False, scale=False):
+    """Configure environment for full frame carl style Atari with scale rewards
     """
     if episode_life:
         env = EpisodicLifeEnv(env)
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    env = WarpFrame(env)
+    env = WarpFrameCarlFull(env)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
         env = FrameStack(env, 4)
-    if scale_rewards:
-        env = ScaleRewardEnv(env)
-    return env
-
-def wrap_carl_new(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari with scale rewards
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrameCarl(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    if scale_rewards:
-        env = ScaleRewardEnv(env)
     return env

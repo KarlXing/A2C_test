@@ -101,18 +101,14 @@ def get_args():
                         help='remove abstract of evaluations')
     parser.add_argument('--sigmoid', action='store_true', default=False,
                         help='use sigmoid for g update')
-    parser.add_argument('--fixed-g', action='store_true', default=False,
-                        help='use fixed g, otherwise use changing g in default')
-    parser.add_argument('--min-g', type=float, default=0.0,
-                        help='minimum g in modualtion, tonic_g if 0.0, else args.min_g')
-    parser.add_argument('--max-g', type=float, default=0.0,
-                        help='maximum g in modualtion, phasic_g if 0.0, else args.max_g')
-    parser.add_argument('--flip-g', action='store_true', default=False,
-                        help='bigger g with higher entropy in default, whether flip')
-    parser.add_argument('--dynamic-lr', type=int, default=0,
-                        help='0: same learning rate, 1: high g, high lr, 2: high g, low lr')
-    parser.add_argument('--action-selection', action='store_true', default=False,
-                        help='whether use signal to affect action selection, no in default')
+    parser.add_argument('--sleep', type=float, default=0.1,
+                        help='sleep time in increasing gpu usage')
+    parser.add_argument('--track-reward', action='store_true', default=False,
+                        help='whether to track the first time that a new reward occurs')
+    parser.add_argument('--reward-mode', type=int, default=0, 
+                        help='0: clip rewards, 1: multipy rewards, 2: divide rewards')
+    parser.add_argument('--reward-scale', type=float, default=0.1,
+                        help='used in reward mode 1')
 
     args = parser.parse_args()
 
