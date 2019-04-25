@@ -16,7 +16,6 @@ from arguments import get_args
 from envs import make_vec_envs
 from model import Policy
 from storage import RolloutStorage
-from utils import get_vec_normalize, update_mode_entropy, neuro_activity
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 
@@ -138,9 +137,9 @@ def main():
             obs = obs/255
 
             # reward rescaling
-            if reward_mode == 1:
+            if args.reward_mode == 1:
                 reward = reward * args.reward_scale
-            elif reward_mode == 2 and j < args.change_base_reward * num_updates:
+            elif args.reward_mode == 2 and j < args.change_base_reward * num_updates:
                 non_zeros = abs(reward[reward != 0])
                 if len(non_zeros) > 0:
                     min_abs_reward_step = torch.min(non_zeros).item()
