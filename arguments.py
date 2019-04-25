@@ -64,51 +64,31 @@ def get_args():
     parser.add_argument('--port', type=int, default=8097,
                         help='port to run the server on (default: 8097)')
     parser.add_argument('--activation', type=int, default=0,
-                        help='activation function for f1 layer, default 0 : relu, 1 : tanh')
+                        help='activation function for f1 layer, default 0 : relu, 1 : tanh, only effective in complex model')
     parser.add_argument('--carl-wrapper', action='store_true',default=False,
                         help='use deepmind wrapper or carl wrapper')
-    parser.add_argument('--modulation', type=int, default=0,
-                        help='whether use modulation, 0: no modulation; 1: input modulation; 2: f1 modulation')
-    parser.add_argument('--tanh-f1-tonic', type=float, default=0.5,
-                        help='tonic g value for tanh fucntion')
-    parser.add_argument('--tanh-f1-phasic', type=float, default=2.0,
-                        help='phasic g value for tanh function')
-    parser.add_argument('--neuro-input-tonic', type=float, default=100,
-                        help='tonic g value for input')
-    parser.add_argument('--neuro-input-phasic', type=float, default=20,
-                        help='phasic g value for input')
-    parser.add_argument('--relu-tonic', type=float, default=0.5,
-                        help='tonic g value for relu activation')
-    parser.add_argument('--relu-phasic', type=float, default=2.0,
-                        help='phasic g value for relu activation')
+    parser.add_argument('--modulation', action='store_true' , default=False,
+                        help='whether use modulation, benchmark in default')
     parser.add_argument('--log-evaluation', action='store_true', default = False,
                         help='whether log evaluations for later analysis of choosing the threshold')
-    parser.add_argument('--phasic-threshold', type=float, default=0.1,
-                        help='threshold to switch between phasic and tonic modes')
-    parser.add_argument('--input-neuro', action='store_true', default=False,
-                        help='whether use norm or neuro activity form of observation')
-    parser.add_argument('--sync', action='store_true', default=False,
-                        help='only valid in f1 modulation')
-    parser.add_argument('--num-eval-processes', type=int, default=10,
-                        help='how many processes to use in eval model')
     parser.add_argument('--saved-model', default=None,
                         help='the path of the saved model')
     parser.add_argument('--stats-path', default=None,
                         help='the path to the evaluations results')
-    parser.add_argument('--sigmoid-range', type=float, default=5.0,
-                        help='the sigmoid curve parameter')
-    parser.add_argument('--natural-value', action='store_true', default=False,
-                        help='remove abstract of evaluations')
-    parser.add_argument('--sigmoid', action='store_true', default=False,
-                        help='use sigmoid for g update')
     parser.add_argument('--sleep', type=float, default=0.1,
                         help='sleep time in increasing gpu usage')
-    parser.add_argument('--track-reward', action='store_true', default=False,
-                        help='whether to track the first time that a new reward occurs')
+    parser.add_argument('--track-scaled-reward', action='store_true', default=False,
+                        help='whether to track the first time that a scaled reward occurs')
+    parser.add_argument('--track-primitive-reward', action='store_true', default=False,
+                        help='whether to track the first time that a primitive reward occurs')
+    parser.add_argument('--track-reward-density', action='store_true', default=False,
+                        help='whether to track the reward density of each episode of the game, sampled from process 0')  
     parser.add_argument('--reward-mode', type=int, default=0, 
                         help='0: clip rewards, 1: multipy rewards, 2: divide rewards')
     parser.add_argument('--reward-scale', type=float, default=0.1,
                         help='used in reward mode 1')
+    parser.add_argument('--complex-model', action='store_true', default=False,
+                        help='use complex model or simple model')
 
     args = parser.parse_args()
 

@@ -80,7 +80,7 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.complex_model,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -97,39 +97,42 @@ def main():
     elif args.algo == 'acktr':
         agent = algo.A2C_ACKTR(actor_critic, args.value_loss_coef,
                                args.entropy_coef, acktr=True)
-    # print key arguments
-    g_device = (torch.ones(args.num_processes, 1)).to(device)
-    masks_device = torch.ones(args.num_processes, 1).to(device)
-    reward_count = 0
-    start_step = 0
 
     rollouts = RolloutStorage(args.num_steps, args.num_processes,
                         envs.observation_space.shape, envs.action_space,
-                        actor_critic.recurrent_hidden_state_size, 1.0)
+                        actor_critic.recurrent_hidden_state_size)
 
+    # initiate env and storage rollout
     obs = envs.reset()
     obs = obs/255
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
-    episode_rewards = deque(maxlen=10)
-    start = time.time()
-    g_step = 0
-    reward_history = set()
-    primitive_reward_history = set()
-    min_abs_reward = float('inf')
+    # necessary variabels
+    episode_rewards = deque(maxlen=10) # store last 10 episode rewards
+    g_step = 0 # global step
+    reward_history = set() # record reward history (after reward rescaling)
+    primitive_reward_history = set() # record original history (before reward rescaling)
+    min_abs_reward = float('inf') # used in reward rescaling mode 2, work as a base
+    masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
+    reward_count = 0 # for reward density calculation
+    reward_start_step = 0 # for reward density calculation
+
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, xmin, xmax, xmean, ori_dist_entropy, ratio = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, entropy = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
-            ori_dist_entropy = ori_dist_entropy.cpu().unsqueeze(1)
+            entropy = entropy.cpu().unsqueeze(1)
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
+            obs = obs/255
+
+            # reward rescaling
             if reward_mode == 1:
                 reward = reward * args.reward_scale
             elif reward_mode == 2:
@@ -145,37 +148,27 @@ def main():
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
-            obs = obs/255
-
-            if reward[0] != 0:
-                reward_count += 1
-            # the log info is based on subprocess 0
             if args.log_evaluation:
-                # writer.add_scalar('analysis/ratio', ratio/args.num_processes, g_step)
-                # writer.add_scalar('analysis/reward', reward[0], g_step)
-                writer.add_scalar('analysis/entropy', ori_dist_entropy[0].item(), g_step)
-                # writer.add_scalar('analysis/xmin', xmin, g_step)
-                # writer.add_scalar('analysis/xmax', xmax, g_step)
-                # writer.add_scalar('analysis/xmean', xmean, g_step)
-                # if done[0]:
-                #     writer.add_scalar('analysis/done', 1, g_step)
-                # if 'episode' in infos[0].keys():
-                #     writer.add_scalar('analysis/reward_density', reward_count/(g_step - start_step), g_step)
-                #     reward_count = 0
-                #     start_step = g_step + 1
-                for info in infos:
-                    if 'new_reward' in info:
-                        new_rewards  = info['new_reward'] - primitive_reward_history
-                        if len(new_rewards) > 0:
-                            print('new primitive rewards: ', new_rewards, ' time: ', g_step)
-                            primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
-
-            if args.track_reward:
-                for r in reward:
-                    r = r.item()
-                    if r not in reward_history:
-                        print('new step rewards: ', r, g_step)
-                        reward_history.add(r)
+                writer.add_scalar('analysis/entropy', entropy.mean().item(), g_step)
+                if args.track_reward_density:   # track reward density, based on 0th process
+                    reward_count += (reward[0] != 0)
+                    if 'episode' in infos[0].keys():
+                        writer.add_scalar('analysis/reward_density', reward_count/(g_step - reward_start_step), g_step)
+                        reward_count = 0
+                        reward_start_step = g_step
+                if args.track_primitive_reward:   # track primitive reward (before rescaling)
+                    for info in infos:
+                        if 'new_reward' in info:
+                            new_rewards  = info['new_reward'] - primitive_reward_history
+                            if len(new_rewards) > 0:
+                                print('new primitive rewards: ', new_rewards, ' time: ', g_step)
+                                primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
+                if args.track_scaled_reward:  # track rewards after rescaling
+                    for r in reward:
+                        r = r.item()
+                        if r not in reward_history:
+                            print('new step rewards: ', r, g_step)
+                            reward_history.add(r)
 
 
             for idx in range(len(infos)):
@@ -192,12 +185,11 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
-            assert(torch.sum(g_device).item() == args.num_processes)
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, g_device)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
         with torch.no_grad():
             masks_device.copy_(masks)
-            next_value, next_dist_entropy = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
+            next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 

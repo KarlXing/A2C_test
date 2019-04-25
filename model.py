@@ -12,13 +12,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, complex_model, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape, activation=activation, **base_kwargs)
+            self.base = CNNBase(obs_shape, activation=activation, complex = complex_model, **base_kwargs)
             #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -48,7 +48,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs, x = self.base(inputs, rnn_hxs, masks)
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
@@ -56,28 +56,22 @@ class Policy(nn.Module):
             action = dist.mode()
         else:
             action = dist.sample()
-        mode_action = dist.mode()
-        same_action_ratio = torch.sum(action == mode_action).item()
         action_log_probs = dist.log_probs(action)
-        #dist_entropy = dist.entropy().mean()
 
-        return value, action, action_log_probs, rnn_hxs, x.min(), x.max(), x.mean(), dist_entropy, same_action_ratio
+        return value, action, action_log_probs, rnn_hxs, dist_entropy
 
     def get_value(self, inputs, rnn_hxs, masks):
-        value, actor_features, _, _ = self.base(inputs, rnn_hxs, masks)
-        dist = self.dist(actor_features)
-        dist_entropy = dist.entropy()
-
-        return value, dist_entropy
+        value, _, _ = self.base(inputs, rnn_hxs, masks)
+        return value
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs, _ = self.base(inputs, rnn_hxs, masks)
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy, rnn_hxs
+        return value, action_log_probs, dist_entropy
 
 
 class NNBase(nn.Module):
@@ -172,9 +166,10 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, obs_shape, activation, recurrent=False, hidden_size=512):
+    def __init__(self, obs_shape, activation, complex, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
+        self.complex = complex
         num_inputs = obs_shape[0]
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -193,6 +188,19 @@ class CNNBase(NNBase):
 
         self.f1 = init_(nn.Linear(x.shape[-1], hidden_size))
 
+        if self.complex:
+            if self.activation == 1:
+                init_ = lambda m: init(m,
+                    nn.init.orthogonal_,
+                    lambda x: nn.init.constant_(x, 0),
+                    nn.init.calculate_gain('tanh'))
+            elif self.activation == 2:
+                init_ = lambda m: init(m,
+                    nn.init.orthogonal_,
+                    lambda x: nn.init.constant_(x, 0),
+                    nn.init.calculate_gain('sigmoid'))
+            self.f1_a = init_(nn.Linear(x.shape[-1], hidden_size))
+
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
@@ -205,12 +213,21 @@ class CNNBase(NNBase):
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
-        f_x = F.relu(self.f1(x))
+        f_c = F.relu(self.f1(x))
+        if self.complex:
+            if self.activation == 0:
+                f_a = F.relu(self.f1_a(x))
+            elif self.activation == 1:
+                f_a = torch.tanh(self.f1_a(x))
+            else:
+                f_a = F.sigmoid(self.f1_a(x))
+        else:
+            f_a = f_c
 
-        if self.is_recurrent:
-            f_x, rnn_hxs = self._forward_gru(f_x, rnn_hxs, masks)
+        if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
+            f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
 
-        return self.critic_linear(f_x), f_x, rnn_hxs, x
+        return self.critic_linear(f_c), f_a, rnn_hxs
 
 
 
