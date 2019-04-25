@@ -140,7 +140,7 @@ def main():
             # reward rescaling
             if reward_mode == 1:
                 reward = reward * args.reward_scale
-            elif reward_mode == 2:
+            elif reward_mode == 2 and j < args.change_base_reward * num_updates:
                 non_zeros = abs(reward[reward != 0])
                 if len(non_zeros) > 0:
                     min_abs_reward_step = torch.min(non_zeros).item()

@@ -93,6 +93,8 @@ def get_args():
                         help='when start to do modulation')
     parser.add_argument('--track-lr', action='store_true', default=False,
                         help='whether to track lr change, effective only with modulation')
+    parser.add_argument('--change-base-reward', type=float, default=0.01,
+                        help='stop changing the base of reward in reward rescaling mode 2')
 
     args = parser.parse_args()
 
