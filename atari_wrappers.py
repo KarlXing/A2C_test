@@ -128,17 +128,6 @@ class ClipRewardEnv(gym.RewardWrapper):
         """Bin reward to {+1, 0, -1} by its sign."""
         return np.sign(reward)
 
-class ScaleRewardEnv(gym.RewardWrapper):
-    def __init__(self, env):
-        gym.RewardWrapper.__init__(self, env)
-        self.min_abs_reward = float('inf')
-
-    def reward(self, reward):
-        """Bin reward to {+1, 0, -1} by its sign."""
-        if reward == 0:
-            return reward
-        self.min_abs_reward = min(self.min_abs_reward, abs(reward))
-        return reward/self.min_abs_reward
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env):
@@ -294,43 +283,7 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
         env = FrameStack(env, 4)
     return env
 
-def wrap_carl(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari with scale rewards
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrame(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    if scale_rewards:
-        env = ScaleRewardEnv(env)
-    return env
-
-def wrap_carl_new(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari with scale rewards
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrameCarl(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    if scale_rewards:
-        env = ScaleRewardEnv(env)
-    return env
-
-def wrap_carl_full(env, episode_life=True, scale_rewards = True, clip_rewards=False, frame_stack=False, scale=False):
+def wrap_carl_full(env, episode_life=True, clip_rewards=False, frame_stack=False, scale=False):
     """Configure environment for full frame carl style Atari with scale rewards
     """
     if episode_life:
@@ -344,6 +297,4 @@ def wrap_carl_full(env, episode_life=True, scale_rewards = True, clip_rewards=Fa
         env = ClipRewardEnv(env)
     if frame_stack:
         env = FrameStack(env, 4)
-    if scale_rewards:
-        env = ScaleRewardEnv(env)
     return env
