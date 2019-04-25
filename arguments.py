@@ -89,6 +89,10 @@ def get_args():
                         help='used in reward mode 1')
     parser.add_argument('--complex-model', action='store_true', default=False,
                         help='use complex model or simple model')
+    parser.add_argument('--start-modulate', type=float, default=0.01,
+                        help='when start to do modulation')
+    parser.add_argument('--track-lr', action='store_true', default=False,
+                        help='whether to track lr change, effective only with modulation')
 
     args = parser.parse_args()
 

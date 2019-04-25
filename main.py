@@ -117,6 +117,7 @@ def main():
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
+    insert_entropy = torch.ones(args.num_processes, 1)
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -127,7 +128,11 @@ def main():
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
-            entropy = entropy.cpu().unsqueeze(1)
+
+            # update entropy inserted into rollout when appropriate 
+            if args.modulation and j > args.start_modualte * num_updates:
+                insert_entropy = entropy.unsqueeze(1)
+
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             obs = obs/255
@@ -185,7 +190,7 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, insert_entropy)
 
         with torch.no_grad():
             masks_device.copy_(masks)
@@ -193,7 +198,13 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation)
+
+        if args.modulation and  args.track_lr and args.log_evaluation:
+            writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/std_lr', torch.std(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.lr).item(), j)
 
         rollouts.after_update()
 
