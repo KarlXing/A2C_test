@@ -139,13 +139,14 @@ def main():
             # reward rescaling
             if args.reward_mode == 1:
                 reward = reward * args.reward_scale
-            elif args.reward_mode == 2 and j < args.change_base_reward * num_updates:
-                non_zeros = abs(reward[reward != 0])
-                if len(non_zeros) > 0:
-                    min_abs_reward_step = torch.min(non_zeros).item()
-                    if min_abs_reward > min_abs_reward_step:
-                        min_abs_reward = min_abs_reward_step
-                        print('new min abs reward: ', min_abs_reward, ' time: ', g_step)
+            elif args.reward_mode == 2:
+                if j < args.change_base_reward * num_updates:
+                    non_zeros = abs(reward[reward != 0])
+                    if len(non_zeros) > 0:
+                        min_abs_reward_step = torch.min(non_zeros).item()
+                        if min_abs_reward > min_abs_reward_step:
+                            min_abs_reward = min_abs_reward_step
+                            print('new min abs reward: ', min_abs_reward, ' time: ', g_step)
                 if min_abs_reward != float('inf'):
                     reward = reward/min_abs_reward
 
