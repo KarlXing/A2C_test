@@ -129,7 +129,7 @@ def main():
                         rollouts.masks[step])
 
             # update entropy inserted into rollout when appropriate 
-            if args.modulation and j > args.start_modualte * num_updates:
+            if args.modulation and j > args.start_modulate * num_updates:
                 insert_entropy = entropy.unsqueeze(1)
 
             # Obser reward and next obs
