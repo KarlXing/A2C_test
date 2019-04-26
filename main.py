@@ -116,17 +116,48 @@ def main():
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
-    insert_entropy = torch.ones(args.num_processes, 1)
+    insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
+    avg_entropy = 0
 
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, entropy = actor_critic.act(
+                value, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
+
+            # analyze the stats of f_a 
+            f_a = f_a.view(-1)
+            num_all = len(f_a)
+            f_a = f_a[f_a > 0]
+            num_pos = len(f_a)
+            mean_pos = torch.mean(f_a)
+            std_pos = torch.std(f_a)
+            num_2std = sum(f_a > (mean_pos - 2*std_pos))
+            num_std = sum(f_a > (mean_pos - std_pos))
+            num_halfstd= sum(f_a > (mean_pos - 0.5*std_pos))
+            num_0std = sum(f_a > mean_pos)
+            writer.add_scalar('analysis/pos_ratio', num_pos/num_all, g_step)
+            writer.add_scalar('analysis/2std_ratio', num_2std/num_pos, g_step)
+            writer.add_scalar('analysis/1std_ratio', num_std/num_pos, g_step)
+            writer.add_scalar('analysis/0.5std_ratio', num_halfstd/num_pos, g_step)
+            writer.add_scalar('analysis/0std_ratio', num_0std/num_pos, g_step)
+            writer.add_scalar('analysis/mean_pos', mean_pos, g_step)
+            writer.add_scalar('analysis/std_pos', std_pos, g_step)
+
+            # analyze the stats of entropy
+            avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
+            num_all = len(entropy.view(-1))
+            entropy_ratio = entropy/avg_entropy
+            num_larger_mean = sum(entropy_ratio > 1)
+            num_larger_onehalf = sum(entropy_ratio > 1.5)
+            num_larger_double = sum(entropy_ratio > 2)
+            writer.add_scalar('analysis/entropy_mean_ratio', num_larger_mean/num_all, g_step)
+            writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
+            writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
 
             # update entropy inserted into rollout when appropriate 
             if args.modulation and j > args.start_modulate * num_updates:

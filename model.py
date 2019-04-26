@@ -48,7 +48,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value, actor_features, rnn_hxs, f_a = self.base(inputs, rnn_hxs, masks, True)
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
@@ -58,7 +58,7 @@ class Policy(nn.Module):
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
 
-        return value, action, action_log_probs, rnn_hxs, dist_entropy
+        return value, action, action_log_probs, rnn_hxs, dist_entropy, f_a
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _ = self.base(inputs, rnn_hxs, masks)
@@ -208,7 +208,7 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, rnn_hxs, masks):
+    def forward(self, inputs, rnn_hxs, masks, need_inner=False):
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -216,7 +216,8 @@ class CNNBase(NNBase):
         f_c = F.relu(self.f1(x))
         if self.complex:
             if self.activation == 0:
-                f_a = F.relu(self.f1_a(x))
+                f_a_inner = self.f1_a(x)
+                f_a = F.relu(f_a_inner)
             elif self.activation == 1:
                 f_a = torch.tanh(self.f1_a(x))
             else:
@@ -227,8 +228,10 @@ class CNNBase(NNBase):
         if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
             f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
 
-        return self.critic_linear(f_c), f_a, rnn_hxs
-
+        if need_inner:
+            return self.critic_linear(f_c), f_a, rnn_hxs, f_a_inner
+        else:
+            return self.critic_linear(f_c), f_a, rnn_hxs
 
 
 class MLPBase(NNBase):
