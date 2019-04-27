@@ -58,7 +58,7 @@ class Policy(nn.Module):
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
 
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, f_a
+        return value, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
 
     def get_value(self, inputs, rnn_hxs, masks):
         value, _, _ = self.base(inputs, rnn_hxs, masks)

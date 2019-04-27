@@ -119,6 +119,7 @@ def main():
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
     avg_entropy = 0
 
+    num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
@@ -130,23 +131,32 @@ def main():
                         rollouts.masks[step])
 
             # analyze the stats of f_a 
-            f_a = f_a.view(-1)
-            num_all = len(f_a)
-            f_a = f_a[f_a > 0]
-            num_pos = len(f_a)
-            mean_pos = torch.mean(f_a).item()
-            std_pos = torch.std(f_a).item()
-            num_2std = sum(f_a > (mean_pos - 2*std_pos)).item()
-            num_std = sum(f_a > (mean_pos - std_pos)).item()
-            num_halfstd= sum(f_a > (mean_pos - 0.5*std_pos)).item()
-            num_0std = sum(f_a > mean_pos).item()
-            writer.add_scalar('analysis/pos_ratio', num_pos/num_all, g_step)
-            writer.add_scalar('analysis/2std_ratio', num_2std/num_pos, g_step)
-            writer.add_scalar('analysis/1std_ratio', num_std/num_pos, g_step)
-            writer.add_scalar('analysis/0.5std_ratio', num_halfstd/num_pos, g_step)
-            writer.add_scalar('analysis/0std_ratio', num_0std/num_pos, g_step)
-            writer.add_scalar('analysis/mean_pos', mean_pos, g_step)
-            writer.add_scalar('analysis/std_pos', std_pos, g_step)
+            # f_a = f_a.view(-1)
+            # num_all = len(f_a)
+            # f_a = f_a[f_a > 0]
+            # num_pos = len(f_a)
+            # mean_pos = torch.mean(f_a).item()
+            # std_pos = torch.std(f_a).item()
+            # num_2std = sum(f_a > (mean_pos - 2*std_pos)).item()
+            # num_std = sum(f_a > (mean_pos - std_pos)).item()
+            # num_halfstd= sum(f_a > (mean_pos - 0.5*std_pos)).item()
+            # num_0std = sum(f_a > mean_pos).item()
+            # writer.add_scalar('analysis/pos_ratio', num_pos/num_all, g_step)
+            # writer.add_scalar('analysis/2std_ratio', num_2std/num_pos, g_step)
+            # writer.add_scalar('analysis/1std_ratio', num_std/num_pos, g_step)
+            # writer.add_scalar('analysis/0.5std_ratio', num_halfstd/num_pos, g_step)
+            # writer.add_scalar('analysis/0std_ratio', num_0std/num_pos, g_step)
+            # writer.add_scalar('analysis/mean_pos', mean_pos, g_step)
+            # writer.add_scalar('analysis/std_pos', std_pos, g_step)
+            mean_fa = torch.mean(f_a)
+            num_nonzero = f_a.nonzero().size(0)
+            mean_pos = mean_fa * num_feature_neurons / num_nonzero
+            activation_ratio = f_a / mean_pos
+            num_bigger_mean_fa = sum(activation_ratio > 1).item()
+            num_bigger_half_fa = sum(activation_ratio > 0.5).item()
+            writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
+            writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
+            writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
 
             # analyze the stats of entropy
             avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
