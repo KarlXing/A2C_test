@@ -48,7 +48,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs, f_a = self.base(inputs, rnn_hxs, masks, True)
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks, True)
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
@@ -229,7 +229,7 @@ class CNNBase(NNBase):
             f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
 
         if need_inner:
-            return self.critic_linear(f_c), f_a, rnn_hxs, f_a_inner
+            return self.critic_linear(f_c), f_a, rnn_hxs
         else:
             return self.critic_linear(f_c), f_a, rnn_hxs
 
