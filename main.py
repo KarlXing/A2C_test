@@ -155,7 +155,7 @@ def main():
             num_bigger_mean_fa = torch.sum(activation_ratio > 1).item()
             num_bigger_half_fa = torch.sum(activation_ratio > 0.5).item()
             writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
-            writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
+            writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_half_fa)/num_nonzero, g_step)
             writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
 
             # analyze the stats of entropy
