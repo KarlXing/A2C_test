@@ -220,17 +220,17 @@ def main():
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
-                    episode_rewards.append(info['episode']['r'])
+                    # episode_rewards.append(info['episode']['r'])
                     steps_done = g_step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
-                    mean_rewards = np.mean(episode_rewards)
-                    writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
-                    if mean_rewards > best_score:
-                        best_score = mean_rewards
-                        save_model = actor_critic
-                        if args.cuda:
-                            save_model = copy.deepcopy(actor_critic).cpu()
-                        torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
+                    # mean_rewards = np.mean(episode_rewards)
+                    # writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
+                    # if mean_rewards > best_score:
+                    #     best_score = mean_rewards
+                    #     save_model = actor_critic
+                    #     if args.cuda:
+                    #         save_model = copy.deepcopy(actor_critic).cpu()
+                    #     torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, insert_entropy)
 
         with torch.no_grad():
