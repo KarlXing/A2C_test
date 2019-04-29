@@ -130,6 +130,8 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
+            avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
+
             if args.track_hidden_stats:
                 # analyze the stats of f_a 
                 mean_fa = torch.mean(f_a)
@@ -143,7 +145,6 @@ def main():
                 writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
 
                 # analyze the stats of entropy
-                avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
                 num_all = len(entropy.view(-1))
                 entropy_ratio = entropy/avg_entropy
                 num_larger_mean = sum(entropy_ratio > 1).item()
@@ -153,9 +154,8 @@ def main():
                 writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
                 writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
 
-            # update entropy inserted into rollout when appropriate 
-            if args.modulation and j > args.start_modulate * num_updates:
-                insert_entropy = entropy.unsqueeze(1)
+            # update entropy inserted into rollout
+            insert_entropy = entropy.unsqueeze(1)
 
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -224,7 +224,7 @@ def main():
         rollouts.update_avg_entropy(avg_entropy)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation and (j > args.start_modulate * num_updates))
 
         if args.modulation and  args.track_lr and args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
