@@ -95,6 +95,8 @@ def get_args():
                         help='whether to track lr change, effective only with modulation')
     parser.add_argument('--change-base-reward', type=float, default=0.01,
                         help='stop changing the base of reward in reward rescaling mode 2')
+    parser.add_argument('--track-hidden-stats', action='store_true', default=False,
+                        help='whether to track the stats of hidden layer, may used for threshold')
 
     args = parser.parse_args()
 

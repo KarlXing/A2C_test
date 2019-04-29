@@ -130,44 +130,28 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
-            # analyze the stats of f_a 
-            # f_a = f_a.view(-1)
-            # num_all = len(f_a)
-            # f_a = f_a[f_a > 0]
-            # num_pos = len(f_a)
-            # mean_pos = torch.mean(f_a).item()
-            # std_pos = torch.std(f_a).item()
-            # num_2std = sum(f_a > (mean_pos - 2*std_pos)).item()
-            # num_std = sum(f_a > (mean_pos - std_pos)).item()
-            # num_halfstd= sum(f_a > (mean_pos - 0.5*std_pos)).item()
-            # num_0std = sum(f_a > mean_pos).item()
-            # writer.add_scalar('analysis/pos_ratio', num_pos/num_all, g_step)
-            # writer.add_scalar('analysis/2std_ratio', num_2std/num_pos, g_step)
-            # writer.add_scalar('analysis/1std_ratio', num_std/num_pos, g_step)
-            # writer.add_scalar('analysis/0.5std_ratio', num_halfstd/num_pos, g_step)
-            # writer.add_scalar('analysis/0std_ratio', num_0std/num_pos, g_step)
-            # writer.add_scalar('analysis/mean_pos', mean_pos, g_step)
-            # writer.add_scalar('analysis/std_pos', std_pos, g_step)
-            mean_fa = torch.mean(f_a)
-            num_nonzero = f_a.nonzero().size(0)
-            mean_pos = mean_fa * num_feature_neurons / num_nonzero
-            activation_ratio = f_a / mean_pos
-            num_bigger_mean_fa = torch.sum(activation_ratio > 1).item()
-            num_bigger_half_fa = torch.sum(activation_ratio > 0.5).item()
-            writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
-            writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_half_fa)/num_nonzero, g_step)
-            writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
+            if args.track_hidden_stats:
+                # analyze the stats of f_a 
+                mean_fa = torch.mean(f_a)
+                num_nonzero = f_a.nonzero().size(0)
+                mean_pos = mean_fa * num_feature_neurons / num_nonzero
+                activation_ratio = f_a / mean_pos
+                num_bigger_mean_fa = torch.sum(activation_ratio > 1).item()
+                num_bigger_half_fa = torch.sum(activation_ratio > 0.5).item()
+                writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
+                writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_half_fa)/num_nonzero, g_step)
+                writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
 
-            # analyze the stats of entropy
-            avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
-            num_all = len(entropy.view(-1))
-            entropy_ratio = entropy/avg_entropy
-            num_larger_mean = sum(entropy_ratio > 1).item()
-            num_larger_onehalf = sum(entropy_ratio > 1.5).item()
-            num_larger_double = sum(entropy_ratio > 2).item()
-            writer.add_scalar('analysis/entropy_mean_ratio', num_larger_mean/num_all, g_step)
-            writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
-            writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
+                # analyze the stats of entropy
+                avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
+                num_all = len(entropy.view(-1))
+                entropy_ratio = entropy/avg_entropy
+                num_larger_mean = sum(entropy_ratio > 1).item()
+                num_larger_onehalf = sum(entropy_ratio > 1.5).item()
+                num_larger_double = sum(entropy_ratio > 2).item()
+                writer.add_scalar('analysis/entropy_mean_ratio', num_larger_mean/num_all, g_step)
+                writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
+                writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
 
             # update entropy inserted into rollout when appropriate 
             if args.modulation and j > args.start_modulate * num_updates:
@@ -220,11 +204,11 @@ def main():
             for idx in range(len(infos)):
                 info = infos[idx]
                 if 'episode' in info.keys():
-                    # episode_rewards.append(info['episode']['r'])
+                    episode_rewards.append(info['episode']['r'])
                     steps_done = g_step*args.num_processes + idx
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
-                    # mean_rewards = np.mean(episode_rewards)
-                    # writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
+                    mean_rewards = np.mean(episode_rewards)
+                    writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
                     # if mean_rewards > best_score:
                     #     best_score = mean_rewards
                     #     save_model = actor_critic
