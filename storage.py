@@ -27,6 +27,7 @@ class RolloutStorage(object):
         self.step = 0
         self.entropys = torch.zeros(num_steps, num_processes, 1)
         self.lr = torch.ones(num_steps, num_processes, 1)
+        self.avg_entropy = 0
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -53,6 +54,9 @@ class RolloutStorage(object):
 
     def insert_lr(self, lr):
         self.lr.copy_(lr)
+
+    def update_avg_entropy(self, avg_entropy):
+        self.avg_entropy = avg_entropy
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])

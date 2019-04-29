@@ -135,6 +135,6 @@ def obs_representation(obs, modulation, g_device, input_neuro):
         obs = obs/255
     return obs
 
-def modulate_lr(entropy):
-    exp_entropy = torch.exp(entropy)
-    return exp_entropy/(torch.mean(exp_entropy))
+def modulate_lr(entropy, avg_entropy):
+    return (entropy+1)/(avg_entropy+1)
+ 

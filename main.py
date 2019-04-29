@@ -221,6 +221,7 @@ def main():
             masks_device.copy_(masks)
             next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
 
+        rollouts.update_avg_entropy(avg_entropy)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation)
