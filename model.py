@@ -64,8 +64,8 @@ class Policy(nn.Module):
         value, _, _ = self.base(inputs, rnn_hxs, masks)
         return value
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action, threshold):
+        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks, threshold)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -208,7 +208,7 @@ class CNNBase(NNBase):
 
         self.train()
 
-    def forward(self, inputs, rnn_hxs, masks):
+    def forward(self, inputs, rnn_hxs, masks, threshold=None):
         x = F.relu(self.conv1(inputs))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -216,7 +216,10 @@ class CNNBase(NNBase):
         f_c = F.relu(self.f1(x))
         if self.complex:
             if self.activation == 0:
-                f_a = F.relu(self.f1_a(x))
+                if threshold is None:
+                    f_a = F.relu(self.f1_a(x))
+                else:
+                    f_a = F.relu(self.f1_a(x)-threshold)
             elif self.activation == 1:
                 f_a = torch.tanh(self.f1_a(x))
             else:

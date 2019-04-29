@@ -35,12 +35,17 @@ class A2C_ACKTR():
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
+        if modulation:
+            threshold = rollouts.threshold.view(-1, 1)
+        else:
+            threshold = None
 
         values, action_log_probs, dist_entropy = self.actor_critic.evaluate_actions(
             rollouts.obs[:-1].view(-1, *obs_shape),
             rollouts.recurrent_hidden_states[0].view(-1, self.actor_critic.recurrent_hidden_state_size),
             rollouts.masks[:-1].view(-1, 1),
-            rollouts.actions.view(-1, action_shape))
+            rollouts.actions.view(-1, action_shape),
+            threshold)
 
         values = values.view(num_steps, num_processes, 1)
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
@@ -48,9 +53,7 @@ class A2C_ACKTR():
         advantages = rollouts.returns[:-1] - values
         value_loss = advantages.pow(2).mean()
 
-        if modulation:
-            rollouts.insert_lr(modulate_lr(rollouts.entropys))
-        action_loss = -(advantages.detach() * action_log_probs * rollouts.lr).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
