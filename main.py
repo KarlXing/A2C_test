@@ -132,10 +132,10 @@ def main():
             
             avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
 
-            num_active = (f_a > 0).sum(dim=1).type(torch.FloatTensor)
+            num_active = (f_a > 0).sum(dim=1).type(torch.cuda.FloatTensor)
             mean_active = f_a.mean(dim=1)*512/num_active
             ratio = (entropy/avg_entropy).clamp(min=1.5, max=2.0)-1.5
-            threshold = mean_active*ratio
+            threshold = (mean_active*ratio).unsqueeze(1)
             writer.add_scalar('analysis/threshold_ratio', ratio.mean().item(), g_step)
 
             if args.track_hidden_stats:
@@ -229,7 +229,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation and j > args.start_modulate * args.num_updates)
+        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation and j > args.start_modulate * num_updates)
 
         writer.add_scalar('analysis/modulated_entropy', dist_entropy, g_step)
 
