@@ -136,5 +136,5 @@ def obs_representation(obs, modulation, g_device, input_neuro):
     return obs
 
 def modulate_lr(entropy, avg_entropy):
-    return (entropy/avg_entropy).clamp(min=0.1, max=10.0)
+    return entropy/(2*avg_entropy)+0.5
  
