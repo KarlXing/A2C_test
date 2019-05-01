@@ -46,11 +46,12 @@ class A2C_ACKTR():
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         advantages = rollouts.returns[:-1] - values
-        value_loss = advantages.pow(2).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if modulation:
-            rollouts.insert_lr(modulate_lr(rollouts.entropys, rollouts.avg_entropy))
-        action_loss = -(advantages.detach() * action_log_probs * rollouts.lr).mean()
+            rollouts.insert_lr(modulate_lr(rollouts.action_log_probs, rollouts.avg_prob))
+        ori_value_loss = advantages.pow(2)
+        value_loss = (ori_value_loss * rollouts.lr).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
@@ -79,4 +80,4 @@ class A2C_ACKTR():
 
         self.optimizer.step()
 
-        return value_loss.item(), action_loss.item(), dist_entropy.item()
+        return torch.mean(ori_value_loss).item(), action_loss.item(), dist_entropy.item()

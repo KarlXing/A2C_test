@@ -118,6 +118,7 @@ def main():
     reward_start_step = 0 # for reward density calculation
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
     avg_entropy = 0
+    avg_prob = 0
 
     num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
@@ -131,6 +132,7 @@ def main():
                         rollouts.masks[step])
 
             avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
+            avg_prob = 0.999*avg_prob + 0.001*torch.mean(torch.exp(action_log_prob)).item()
 
             if args.track_hidden_stats:
                 # analyze the stats of f_a 
@@ -222,9 +224,11 @@ def main():
             next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
 
         rollouts.update_avg_entropy(avg_entropy)
+        rollouts.update_avg_prob(avg_prob)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation and (j > args.start_modulate * num_updates))
+        writer.add_scalar('analysis/value_loss', value_loss, g_step)
 
         if args.modulation and  args.track_lr and args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
