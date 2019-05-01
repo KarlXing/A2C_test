@@ -225,6 +225,9 @@ def main():
 
         value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation)
 
+        if args.track_value_loss:
+            writer.add_scalar('analysis/value_loss', value_loss, j)
+
         if args.modulation and  args.track_lr and args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
             writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)

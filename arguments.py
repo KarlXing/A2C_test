@@ -97,6 +97,8 @@ def get_args():
                         help='stop changing the base of reward in reward rescaling mode 2')
     parser.add_argument('--track-hidden-stats', action='store_true', default=False,
                         help='whether to track the stats of hidden layer, may used for threshold')
+    parser.add_argument('--track-value-loss', action='store_true', default=False,
+                        help='whether to check the value loss of critic')
 
     args = parser.parse_args()
 
