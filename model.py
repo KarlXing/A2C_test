@@ -219,7 +219,9 @@ class CNNBase(NNBase):
                 if threshold is None:
                     f_a = F.relu(self.f1_a(x))
                 else:
-                    f_a = F.relu(self.f1_a(x)-threshold)
+                    x = self.f1_a(x)
+                    f_a = F.relu(x-threshold)
+                    f_a = (x > threshold).type(torch.cuda.FloatTensor)*threshold + f_a
             elif self.activation == 1:
                 f_a = torch.tanh(self.f1_a(x))
             else:
