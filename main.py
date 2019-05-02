@@ -229,7 +229,7 @@ def main():
 
         value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation and (j > args.start_modulate * num_updates))
         writer.add_scalar('analysis/value_loss', value_loss, j)
-        writer.add_scalar('analysis/value', value_loss, j)
+        writer.add_scalar('analysis/value', value, j)
         writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
         if args.modulation and  args.track_lr and args.log_evaluation:
