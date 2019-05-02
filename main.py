@@ -227,8 +227,10 @@ def main():
         rollouts.update_avg_prob(avg_prob)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy = agent.update(rollouts, args.modulation and (j > args.start_modulate * num_updates))
-        writer.add_scalar('analysis/value_loss', value_loss, g_step)
+        value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation and (j > args.start_modulate * num_updates))
+        writer.add_scalar('analysis/value_loss', value_loss, j)
+        writer.add_scalar('analysis/value', value_loss, j)
+        writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
         if args.modulation and  args.track_lr and args.log_evaluation:
             writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)

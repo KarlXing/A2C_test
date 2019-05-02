@@ -80,4 +80,4 @@ class A2C_ACKTR():
 
         self.optimizer.step()
 
-        return torch.mean(ori_value_loss).item(), action_loss.item(), dist_entropy.item()
+        return torch.mean(ori_value_loss).item(), action_loss.item(), dist_entropy.item(), torch.mean(values).item()
