@@ -134,12 +134,13 @@ def main():
 
             num_active = (f_a > 0).sum(dim=1).type(torch.cuda.FloatTensor)
             mean_active = f_a.mean(dim=1)*512/num_active
-            ratio = (entropy/avg_entropy).clamp(min=1.5, max=2.0)-1.5
+            ratio = (entropy/avg_entropy > 1.5)*0.3
             threshold = (mean_active*ratio).unsqueeze(1)
             #writer.add_scalar('analysis/threshold_ratio', ratio.mean().item(), g_step)
             num_active = torch.sum(num_active).item()
             num_big_active = torch.sum(f_a>threshold).item()
             writer.add_scalar('analysis/silence_ratio', (num_active - num_big_active)/num_active, g_step)
+            writer.add_scalar('analysis/bigentropy_ratio', torch.mean(ratio)/0.3, g_step)
 
             if args.track_hidden_stats:
                 # analyze the stats of f_a 
