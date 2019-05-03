@@ -5,3 +5,4 @@
 (sleep 10; date; eval $1)
 
 echo $1 >> command
+cp command runs/
