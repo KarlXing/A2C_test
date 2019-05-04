@@ -21,7 +21,7 @@ elif [ $2 == 5]; then
     (sleep 10; date; eval $1) &
     (sleep 15; date; eval $1) &
     (sleep 20; date; eval $1)
-else; then
+else
     echo "Invalid Loop"
 fi
 
