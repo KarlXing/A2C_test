@@ -5,4 +5,5 @@
 (sleep 10; date; eval $1)
 
 echo $1 >> command
+git rev-parse --short HEAD  >> command
 cp command runs/
