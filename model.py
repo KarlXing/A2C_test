@@ -221,7 +221,9 @@ class CNNBase(NNBase):
                 else:
                     x = self.f1_a(x)
                     f_a = F.relu(x-threshold)
-                    f_a = (x > threshold).type(torch.cuda.FloatTensor)*threshold + f_a
+                    mask1 = (x > 0).type(torch.cuda.FloatTensor)
+                    mask2 = (x > threshold).type(torch.cuda.FloatTensor)
+                    f_a = f_a + (mask1-mask2)*x.detach() + mask2*threshold
             elif self.activation == 1:
                 f_a = torch.tanh(self.f1_a(x))
             else:

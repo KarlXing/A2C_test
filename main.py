@@ -134,7 +134,7 @@ def main():
 
             num_active = (f_a > 0).sum(dim=1).type(torch.cuda.FloatTensor)
             mean_active = f_a.mean(dim=1)*512/num_active
-            ratio = (entropy/avg_entropy > 1.5)*0.3
+            ratio = (entropy/avg_entropy > 1.5).type(torch.cuda.FloatTensor)*0.3
             threshold = (mean_active*ratio).unsqueeze(1)
             #writer.add_scalar('analysis/threshold_ratio', ratio.mean().item(), g_step)
             num_active = torch.sum(num_active).item()
