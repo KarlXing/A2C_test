@@ -77,7 +77,7 @@ def main():
     else:
         clip_rewards = False
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards)
+                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards, args.track_primitive_reward)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.complex_model,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -117,10 +117,14 @@ def main():
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
-    avg_entropy = 0
+    avg_entropy = 0  
+    have_done = 0.0
 
     num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
+        if j/num_updates > have_done:
+            print("have done: ", j/num_updates)
+            have_done += 0.1
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
