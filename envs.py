@@ -29,7 +29,7 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards):
+def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards, primitive_reward):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -39,7 +39,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
         is_atari = hasattr(gym.envs, 'atari') and isinstance(
             env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
         if is_atari:
-            env = make_atari(env_id)
+            env = make_atari(env_id, primitive_reward)
         env.seed(seed + rank)
 
         obs_shape = env.observation_space.shape

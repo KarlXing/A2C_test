@@ -92,7 +92,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = self.env.unwrapped.ale.lives()
         return obs
 
-class MaxAndSkipEnv(gym.Wrapper):
+class MaxAndSkipEnvPrimitive(gym.Wrapper):
     def __init__(self, env, skip=4):
         """Return only every `skip`-th frame"""
         gym.Wrapper.__init__(self, env)
@@ -126,6 +126,35 @@ class MaxAndSkipEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
+
+class MaxAndSkipEnv(gym.Wrapper):
+    def __init__(self, env, skip=4):
+        """Return only every `skip`-th frame"""
+        gym.Wrapper.__init__(self, env)
+        # most recent raw observations (for max pooling across time steps)
+        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=np.uint8)
+        self._skip       = skip
+
+    def step(self, action):
+        """Repeat action, sum reward, and max over last observations."""
+        total_reward = 0.0
+        done = None
+        for i in range(self._skip):
+            obs, reward, done, info = self.env.step(action)
+            if i == self._skip - 2: self._obs_buffer[0] = obs
+            if i == self._skip - 1: self._obs_buffer[1] = obs
+            total_reward += reward
+            if done:
+                break
+        # Note that the observation on the done=True frame
+        # doesn't matter
+        max_frame = self._obs_buffer.max(axis=0)
+
+        return max_frame, total_reward, done, info
+
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)
+
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -245,14 +274,17 @@ class LazyFrames(object):
     def __getitem__(self, i):
         return self._force()[i]
 
-def make_atari(env_id, timelimit=True):
+def make_atari(env_id, timelimit=True, primitive_reward = False):
     # XXX(john): remove timelimit argument after gym is upgraded to allow double wrapping
     env = gym.make(env_id)
     if not timelimit:
         env = env.env
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
+    if primitive_reward:
+        env = MaxAndSkipEnvPrimitive(env, skip=4)
+    else:
+        env = MaxAndSkipEnv(env, skip=4)
     return env
 
 def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
