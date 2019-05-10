@@ -67,8 +67,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
     return _thunk
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
-                  device, allow_early_resets, num_frame_stack=None, new_wrapper=False, clip_rewards=False):
-    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards)
+                  device, allow_early_resets, num_frame_stack=None, new_wrapper=False, clip_rewards=False, primitive_reward=False):
+    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards, primitive_reward)
             for i in range(num_processes)]
 
     if len(envs) > 1:
