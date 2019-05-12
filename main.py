@@ -129,11 +129,14 @@ def main():
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
+                value1, value2, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
+            value = torch.min(value1, value2)
+            value_diff = torch.abs(value1 - value2).mean().item()
+            writer.add_scalar('analysis/value_diff', value_diff, g_step)
             if args.track_hidden_stats:
                 # analyze the stats of f_a 
                 mean_fa = torch.mean(f_a)
@@ -223,8 +226,8 @@ def main():
 
         with torch.no_grad():
             masks_device.copy_(masks)
-            next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
-
+            next_value1, next_value2 = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
+        next_value = torch.min(next_value1, next_value2)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)

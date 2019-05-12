@@ -48,7 +48,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value1, value2, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
@@ -58,20 +58,20 @@ class Policy(nn.Module):
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
 
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
+        return value1, value2, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
 
     def get_value(self, inputs, rnn_hxs, masks):
-        value, _, _ = self.base(inputs, rnn_hxs, masks)
-        return value
+        value1, value2, _, _ = self.base(inputs, rnn_hxs, masks)
+        return value1, value2
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value1, value2, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy
+        return value1, value2, maction_log_probs, dist_entropy
 
 
 class NNBase(nn.Module):
@@ -204,7 +204,8 @@ class CNNBase(NNBase):
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear1 = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear2 = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -227,7 +228,7 @@ class CNNBase(NNBase):
         if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
             f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
 
-        return self.critic_linear(f_c), f_a, rnn_hxs
+        return self.critic_linear1(f_c), self.critic_linear2(f_c),  f_a, rnn_hxs
 
 
 class MLPBase(NNBase):
