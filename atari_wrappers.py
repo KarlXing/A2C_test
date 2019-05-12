@@ -184,7 +184,7 @@ class WarpFrameCarlFull(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
         self.observation_space = spaces.Box(low=0, high=255,
-            shape=(self.observation.shape[0], self.observation.shape[1], 1), dtype=np.uint8)
+            shape=(self.observation_space.shape[0], self.observation_space.shape[1], 1), dtype=np.uint8)
 
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
