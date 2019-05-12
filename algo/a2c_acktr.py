@@ -42,8 +42,9 @@ class A2C_ACKTR():
             rollouts.masks[:-1].view(-1, 1),
             rollouts.actions.view(-1, action_shape))
 
+        values1 = values1.view(num_steps, num_processes, 1)
+        values2 = values2.view(num_steps, num_processes, 1)
         values = torch.min(values1, values2)
-        values = values.view(num_steps, num_processes, 1)
         action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
 
         advantages = rollouts.returns[:-1] - values
