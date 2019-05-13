@@ -99,6 +99,8 @@ def get_args():
                         help='whether to track the stats of hidden layer, may used for threshold')
     parser.add_argument('--track-value-loss', action='store_true', default=False,
                         help='whether to check the value loss of critic')
+    parser.add_argument('--save-intermediate-model', action='store_true', default=False,
+                        help='whether to save intermeidate models')
 
     args = parser.parse_args()
 
