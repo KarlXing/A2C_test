@@ -215,6 +215,10 @@ class CNNBase(NNBase):
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
         f_c = F.relu(self.f1(x))
+
+        if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
+            f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
+
         if self.complex:
             if self.activation == 0:
                 f_a = F.relu(self.f1_a(x))
@@ -224,9 +228,6 @@ class CNNBase(NNBase):
                 f_a = F.sigmoid(self.f1_a(x))
         else:
             f_a = f_c
-
-        if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
-            f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
 
         return self.critic_linear1(f_c), self.critic_linear2(f_c),  f_a, rnn_hxs
 

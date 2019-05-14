@@ -122,9 +122,15 @@ def main():
 
     num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
-        if j/num_updates > have_done:
-            print("have done: ", j/num_updates)
+        if j == int((num_updates-1)*have_done):
+            if args.save_intermediate_model:
+                save_model = actor_critic
+                if args.cuda:
+                    save_model = copy.deepcopy(actor_critic).cpu()
+                torch.save(save_model, os.path.join(save_path, args.env_name + str(have_done)+".pt")) 
+            print("have done: ", have_done)
             have_done += 0.1
+
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
