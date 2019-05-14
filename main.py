@@ -250,10 +250,10 @@ def main():
             writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
         if args.modulation and  args.track_lr and args.log_evaluation:
-            writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/std_lr', torch.std(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.lr).item(), j)
+            writer.add_scalar('analysis/min_lr', torch.min(rollouts.critic_lr).item(), j)
+            writer.add_scalar('analysis/max_lr', torch.max(rollouts.critic_lr).item(), j)
+            writer.add_scalar('analysis/std_lr', torch.std(rollouts.critic_lr).item(), j)
+            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.critic_lr).item(), j)
 
         rollouts.after_update()
 
