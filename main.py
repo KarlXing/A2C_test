@@ -235,7 +235,8 @@ def main():
             masks_device.copy_(masks)
             next_value1, next_value2 = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
         next_value = torch.min(next_value1, next_value2)
-        value_diff_ratio = torch.abs(next_value1 - next_value2)/next_value
+        base_value = torch.max(torch.abs(next_value1), torch.abs(next_value2))
+        value_diff_ratio = torch.abs(next_value1 - next_value2)/base_value
         avg_value_diff_ratio = 0.999 * avg_value_diff_ratio + 0.001 * torch.mean(value_diff_ratio).item()
         modulated_lr = avg_value_diff_ratio/value_diff_ratio
         if args.modulation:
