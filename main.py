@@ -239,7 +239,7 @@ def main():
         avg_value_diff_ratio = 0.999 * avg_value_diff_ratio + 0.001 * torch.mean(value_diff_ratio).item()
         modulated_lr = avg_value_diff_ratio/value_diff_ratio
         if args.modulation:
-            rollouts.insert_critic_lr(modulate_lr)
+            rollouts.insert_critic_lr(modulated_lr)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)
