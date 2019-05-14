@@ -119,6 +119,7 @@ def main():
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
     avg_entropy = 0  
     have_done = 0.0
+    avg_value_diff = 0.0
 
     num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
@@ -234,6 +235,11 @@ def main():
             masks_device.copy_(masks)
             next_value1, next_value2 = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
         next_value = torch.min(next_value1, next_value2)
+        value_diff_ratio = torch.abs(next_value1 - next_value2)/next_value
+        avg_value_diff_ratio = 0.999 * avg_value_diff_ratio + 0.001 * value_diff_ratio
+        modulated_lr = avg_value_diff_ratio/value_diff_ratio
+        if args.modulation:
+            rollouts.insert_critic_lr(modulate_lr)
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
         value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)

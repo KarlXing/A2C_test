@@ -27,6 +27,7 @@ class RolloutStorage(object):
         self.step = 0
         self.entropys = torch.zeros(num_steps, num_processes, 1)
         self.lr = torch.ones(num_steps, num_processes, 1)
+        self.critic_lr = torch.ones(num_processes, 1)
 
     def to(self, device):
         self.obs = self.obs.to(device)
@@ -39,6 +40,7 @@ class RolloutStorage(object):
         self.masks = self.masks.to(device)
         self.entropys = self.entropys.to(device)
         self.lr = self.lr.to(device)
+        self.critic_lr = self.critic_lr.to(device)
 
     def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, entropys):
         self.obs[self.step + 1].copy_(obs)
@@ -53,6 +55,9 @@ class RolloutStorage(object):
 
     def insert_lr(self, lr):
         self.lr.copy_(lr)
+
+    def insert_critic_lr(self, critic_lr):
+        self.critic_lr.copy_(critic_lr)
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])

@@ -54,8 +54,9 @@ class A2C_ACKTR():
         # value_loss = advantages.pow(2).mean()
 
         if modulation:
-            rollouts.insert_lr(modulate_lr(rollouts.entropys))
-        action_loss = -(advantages.detach() * action_log_probs * rollouts.lr).mean()
+            action_loss = -(advantages.detach() * action_log_probs * rollouts.critic_lr).mean()
+        else:
+            action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
