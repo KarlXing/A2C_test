@@ -18,6 +18,7 @@ from model import Policy
 from storage import RolloutStorage
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
+import pickle
 
 #####################################
 # prepare
@@ -79,7 +80,7 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards, args.track_primitive_reward)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.complex_model,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.bias,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -110,27 +111,16 @@ def main():
     # necessary variabels
     episode_rewards = deque(maxlen=10) # store last 10 episode rewards
     g_step = 0 # global step
-    reward_history = set() # record reward history (after reward rescaling)
-    primitive_reward_history = set() # record original history (before reward rescaling)
-    min_abs_reward = float('inf') # used in reward rescaling mode 2, work as a base
+    # reward_history = set() # record reward history (after reward rescaling)
+    # primitive_reward_history = set() # record original history (before reward rescaling)
+    # min_abs_reward = float('inf') # used in reward rescaling mode 2, work as a base
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
-    insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
-    avg_entropy = 0  
-    have_done = 0.0
+    base_reward = float('inf')
+    rewards = {}
 
-    num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
-        if j == int((num_updates-1)*have_done):
-            if args.save_intermediate_model:
-                save_model = actor_critic
-                if args.cuda:
-                    save_model = copy.deepcopy(actor_critic).cpu()
-                torch.save(save_model, os.path.join(save_path, args.env_name + str(have_done)+".pt")) 
-            print("have done: ", have_done)
-            have_done += 0.1
-
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
@@ -140,50 +130,32 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
-            if args.track_hidden_stats:
-                # analyze the stats of f_a 
-                mean_fa = torch.mean(f_a)
-                num_nonzero = f_a.nonzero().size(0)
-                mean_pos = mean_fa * num_feature_neurons / num_nonzero
-                activation_ratio = f_a / mean_pos
-                num_bigger_mean_fa = torch.sum(activation_ratio > 1).item()
-                num_bigger_half_fa = torch.sum(activation_ratio > 0.5).item()
-                writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
-                writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_half_fa)/num_nonzero, g_step)
-                writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
-
-                # analyze the stats of entropy
-                avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
-                num_all = len(entropy.view(-1))
-                entropy_ratio = entropy/avg_entropy
-                num_larger_mean = sum(entropy_ratio > 1).item()
-                num_larger_onehalf = sum(entropy_ratio > 1.5).item()
-                num_larger_double = sum(entropy_ratio > 2).item()
-                writer.add_scalar('analysis/entropy_mean_ratio', num_larger_mean/num_all, g_step)
-                writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
-                writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
-
-            # update entropy inserted into rollout when appropriate 
-            if args.modulation and j > args.start_modulate * num_updates:
-                insert_entropy = entropy.unsqueeze(1)
-
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             obs = obs/255
+            for r in reward:
+                if r.item() not in rewards:
+                    rewards[r.item()] = g_step
+                    writer.add_scalar('base/new_rewards', g_step, r.item())
 
             # reward rescaling
-            if args.reward_mode == 1:
-                reward = reward * args.reward_scale
-            elif args.reward_mode == 2:
-                if j < args.change_base_reward * num_updates:
-                    non_zeros = abs(reward[reward != 0])
-                    if len(non_zeros) > 0:
-                        min_abs_reward_step = torch.min(non_zeros).item()
-                        if min_abs_reward > min_abs_reward_step:
-                            min_abs_reward = min_abs_reward_step
-                            print('new min abs reward: ', min_abs_reward, ' time: ', g_step)
-                if min_abs_reward != float('inf'):
-                    reward = reward/min_abs_reward
+            if args.reward_mode == 2:
+                if base_reward > 1
+                    abs_reward = torch.abs(reward).squeeze()
+                    non_zero_reward = (abs_reward != 0).nonzero().squeeze()
+                    if len(non_zero_reward) > 0:
+                        min_abs_reward = torch.min(abs_reward[non_zero_reward])
+                        if min_abs_reward < 1:
+                            ratio = 1/base_reward
+                            base_reward = 1
+                            actor_critic.update_critic(ratio)
+                            writer.add_scalar('base/new_base_reward',base_reward, g_step)
+                        elif min_abs_reward < base_reward:
+                            ratio = min_abs_reward/base_reward
+                            base_reward = min_abs_reward
+                            actor_critic.update_critic(ratio)
+                            writer.add_scalar('base/new_base_reward', base_reward, g_step)
+                reward = reward/base_reward
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -196,19 +168,13 @@ def main():
                         writer.add_scalar('analysis/reward_density', reward_count/(g_step - reward_start_step), g_step)
                         reward_count = 0
                         reward_start_step = g_step
-                if args.track_primitive_reward:   # track primitive reward (before rescaling)
-                    for info in infos:
-                        if 'new_reward' in info:
-                            new_rewards  = info['new_reward'] - primitive_reward_history
-                            if len(new_rewards) > 0:
-                                print('new primitive rewards: ', new_rewards, ' time: ', g_step)
-                                primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
-                if args.track_scaled_reward:  # track rewards after rescaling
-                    for r in reward:
-                        r = r.item()
-                        if r not in reward_history:
-                            print('new step rewards: ', r, g_step)
-                            reward_history.add(r)
+                # if args.track_primitive_reward:   # track primitive reward (before rescaling)
+                #     for info in infos:
+                #         if 'new_reward' in info:
+                #             new_rewards  = info['new_reward'] - primitive_reward_history
+                #             if len(new_rewards) > 0:
+                #                 print('new primitive rewards: ', new_rewards, ' time: ', g_step)
+                #                 primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
 
 
             for idx in range(len(infos)):
@@ -240,11 +206,6 @@ def main():
             writer.add_scalar('analysis/value', value, j)
             writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
-        if args.modulation and  args.track_lr and args.log_evaluation:
-            writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/std_lr', torch.std(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.lr).item(), j)
 
         rollouts.after_update()
 

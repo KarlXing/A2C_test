@@ -12,13 +12,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, activation, complex_model, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, critic_bias, activation, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape, activation=activation, complex = complex_model, **base_kwargs)
+            self.base = CNNBase(obs_shape, activation=activation, critic_bias=critic_bias, **base_kwargs)
             #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -166,10 +166,9 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, obs_shape, activation, complex, recurrent=False, hidden_size=512):
+    def __init__(self, obs_shape, activation, critic_bias, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
-        self.complex = complex
         num_inputs = obs_shape[0]
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
@@ -186,25 +185,12 @@ class CNNBase(NNBase):
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
 
-        self.f1 = init_(nn.Linear(x.shape[-1], hidden_size))
-
-        if self.complex:
-            if self.activation == 1:
-                init_ = lambda m: init(m,
-                    nn.init.orthogonal_,
-                    lambda x: nn.init.constant_(x, 0),
-                    nn.init.calculate_gain('tanh'))
-            elif self.activation == 2:
-                init_ = lambda m: init(m,
-                    nn.init.orthogonal_,
-                    lambda x: nn.init.constant_(x, 0),
-                    nn.init.calculate_gain('sigmoid'))
-            self.f1_a = init_(nn.Linear(x.shape[-1], hidden_size))
+        self.f = init_(nn.Linear(x.shape[-1], hidden_size))
 
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1, bias=critic_bias))
 
         self.train()
 
@@ -213,22 +199,15 @@ class CNNBase(NNBase):
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
-        f_c = F.relu(self.f1(x))
+        x = F.relu(self.f(x))
 
         if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
-            f_c, rnn_hxs = self._forward_gru(f_c, rnn_hxs, masks)
+            x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
-        if self.complex:
-            if self.activation == 0:
-                f_a = F.relu(self.f1_a(x))
-            elif self.activation == 1:
-                f_a = torch.tanh(self.f1_a(x))
-            else:
-                f_a = F.sigmoid(self.f1_a(x))
-        else:
-            f_a = f_c
+        return self.critic_linear(x), x, rnn_hxs
 
-        return self.critic_linear(f_c), f_a, rnn_hxs
+    def update_critic(self, ratio):
+        self.critic_linear.weight.data = self.critic_linear.weight.data * ratio
 
 
 class MLPBase(NNBase):

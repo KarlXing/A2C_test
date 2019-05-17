@@ -101,6 +101,8 @@ def get_args():
                         help='whether to check the value loss of critic')
     parser.add_argument('--save-intermediate-model', action='store_true', default=False,
                         help='whether to save intermeidate models')
+    parser.add_argument('--bias', action='store_true', default=False,
+                        help='whether to add bias on critic linear layer')
 
     args = parser.parse_args()
 

@@ -56,7 +56,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
             if new_wrapper:
                 env = wrap_carl_full(env, clip_rewards=clip_rewards)
             else:
-                env = wrap_deepmind(env)
+                env = wrap_deepmind(env, clip_rewards=clip_rewards)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
