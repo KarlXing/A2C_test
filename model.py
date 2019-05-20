@@ -12,13 +12,13 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, critic_bias, activation, base_kwargs=None):
+    def __init__(self, obs_shape, action_space, activation, base_kwargs=None):
         super(Policy, self).__init__()
         if base_kwargs is None:
             base_kwargs = {}
 
         if len(obs_shape) == 3:
-            self.base = CNNBase(obs_shape, activation=activation, critic_bias=critic_bias, **base_kwargs)
+            self.base = CNNBase(obs_shape, activation=activation, **base_kwargs)
             #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -166,7 +166,7 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, obs_shape, activation, critic_bias, recurrent=False, hidden_size=512):
+    def __init__(self, obs_shape, activation, recurrent=False, hidden_size=512):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
         self.activation = activation
         num_inputs = obs_shape[0]
@@ -190,7 +190,7 @@ class CNNBase(NNBase):
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
-        self.critic_linear = init_(nn.Linear(hidden_size, 1, bias=critic_bias))
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -208,6 +208,7 @@ class CNNBase(NNBase):
 
     def update_critic(self, ratio):
         self.critic_linear.weight.data = self.critic_linear.weight.data * ratio
+        self.critic_linear.bias = self.critic_linear.bias * ratio
 
 
 class MLPBase(NNBase):

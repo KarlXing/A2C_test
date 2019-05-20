@@ -80,7 +80,7 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards, args.track_primitive_reward)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.bias,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -140,7 +140,7 @@ def main():
 
             # reward rescaling
             if args.reward_mode == 2:
-                if base_reward > 1
+                if base_reward > 1:
                     abs_reward = torch.abs(reward).squeeze()
                     non_zero_reward = (abs_reward != 0).nonzero().squeeze()
                     if len(non_zero_reward) > 0:
