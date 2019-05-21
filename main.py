@@ -25,6 +25,8 @@ from utils import update_base_reward
 #####################################
 # prepare
 
+now = datetime.datetime.now().isoformat()
+
 args = get_args()
 
 assert args.algo in ['a2c', 'ppo', 'acktr']
@@ -38,6 +40,8 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+args.log_dir = args.log_dir + now
+
 try:
     os.makedirs(args.log_dir)
 except OSError:
@@ -45,16 +49,15 @@ except OSError:
     for f in files:
         os.remove(f)
 
-eval_log_dir = args.log_dir + "_eval"
+# eval_log_dir = args.log_dir + "_eval/" 
 
-try:
-    os.makedirs(eval_log_dir)
-except OSError:
-    files = glob.glob(os.path.join(eval_log_dir, '*.monitor.csv'))
-    for f in files:
-        os.remove(f)
+# try:
+#     os.makedirs(eval_log_dir)
+# except OSError:
+#     files = glob.glob(os.path.join(eval_log_dir, '*.monitor.csv'))
+#     for f in files:
+#         os.remove(f)
 
-now = datetime.datetime.now().isoformat()
 save_path = os.path.join(args.save_dir, args.algo)
 try:
     os.makedirs(save_path)
