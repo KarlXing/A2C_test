@@ -9,12 +9,12 @@ elif [ $2 = 3 ]; then
     (date; eval $1) &
     (sleep 5; date; eval $1) &
     (sleep 10; date; eval $1)
-elif [ $2 = 4]; then
+elif [ $2 = 4 ]; then
     (date; eval $1) &
     (sleep 5; date; eval $1) &
     (sleep 10; date; eval $1) &
     (sleep 15; date; eval $1)
-elif [ $2 = 5]; then
+elif [ $2 = 5 ]; then
     (date; eval $1) &
     (sleep 5; date; eval $1) &
     (sleep 10; date; eval $1) &
