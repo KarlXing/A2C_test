@@ -29,7 +29,7 @@ except ImportError:
     pass
 
 
-def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards, primitive_reward):
+def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, clip_rewards, primitive_reward):
     def _thunk():
         if env_id.startswith("dm"):
             _, domain, task = env_id.split('.')
@@ -53,10 +53,7 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
                                 allow_early_resets=allow_early_resets)
 
         if is_atari:
-            if new_wrapper:
-                env = wrap_carl_full(env, clip_rewards=clip_rewards)
-            else:
-                env = wrap_deepmind(env, clip_rewards=clip_rewards)
+            env = wrap_deepmind(env, clip_rewards=clip_rewards)
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
         if len(obs_shape) == 3 and obs_shape[2] in [1, 3]:
@@ -67,8 +64,8 @@ def make_env(env_id, seed, rank, log_dir, add_timestep, allow_early_resets, new_
     return _thunk
 
 def make_vec_envs(env_name, seed, num_processes, gamma, log_dir, add_timestep,
-                  device, allow_early_resets, num_frame_stack=None, new_wrapper=False, clip_rewards=False, primitive_reward=False):
-    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets, new_wrapper, clip_rewards, primitive_reward)
+                  device, allow_early_resets, num_frame_stack=None, clip_rewards=False, primitive_reward=False):
+    envs = [make_env(env_name, seed, i, log_dir, add_timestep, allow_early_resets, clip_rewards, primitive_reward)
             for i in range(num_processes)]
 
     if len(envs) > 1:

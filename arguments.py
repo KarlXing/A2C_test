@@ -84,11 +84,9 @@ def get_args():
     parser.add_argument('--track-reward-density', action='store_true', default=False,
                         help='whether to track the reward density of each episode of the game, sampled from process 0')  
     parser.add_argument('--reward-mode', type=int, default=0, 
-                        help='0: clip rewards, 1: multipy rewards, 2: divide rewards')
+                        help='0: clip rewards, 1: original rewards, 2: scaled rewards')
     parser.add_argument('--reward-scale', type=float, default=0.1,
                         help='used in reward mode 1')
-    parser.add_argument('--complex-model', action='store_true', default=False,
-                        help='use complex model or simple model')
     parser.add_argument('--start-modulate', type=float, default=0.01,
                         help='when start to do modulation')
     parser.add_argument('--track-lr', action='store_true', default=False,

@@ -208,7 +208,7 @@ class CNNBase(NNBase):
 
     def update_critic(self, ratio):
         self.critic_linear.weight.data = self.critic_linear.weight.data * ratio
-        self.critic_linear.bias = self.critic_linear.bias * ratio
+        self.critic_linear.bias.data = self.critic_linear.bias.data * ratio
 
 
 class MLPBase(NNBase):

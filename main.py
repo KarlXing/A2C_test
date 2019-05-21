@@ -19,6 +19,8 @@ from storage import RolloutStorage
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 import pickle
+import datetime
+from utils import update_base_reward
 
 #####################################
 # prepare
@@ -52,6 +54,7 @@ except OSError:
     for f in files:
         os.remove(f)
 
+now = datetime.datetime.now().isoformat()
 save_path = os.path.join(args.save_dir, args.algo)
 try:
     os.makedirs(save_path)
@@ -78,7 +81,7 @@ def main():
     else:
         clip_rewards = False
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards, args.track_primitive_reward)
+                        args.gamma, args.log_dir, args.add_timestep, device, False, 4, clip_rewards, args.track_primitive_reward)
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
@@ -117,8 +120,9 @@ def main():
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
-    base_reward = float('inf')
+    base_reward = None
     rewards = {}
+    insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -135,27 +139,20 @@ def main():
             obs = obs/255
             for r in reward:
                 if r.item() not in rewards:
-                    rewards[r.item()] = g_step
-                    writer.add_scalar('base/new_rewards', g_step, r.item())
+                    rewards[r.item()] = 0
+                else:
+                    rewards[r.item()] += 1
 
             # reward rescaling
             if args.reward_mode == 2:
-                if base_reward > 1:
-                    abs_reward = torch.abs(reward).squeeze()
-                    non_zero_reward = (abs_reward != 0).nonzero().squeeze()
-                    if len(non_zero_reward) > 0:
-                        min_abs_reward = torch.min(abs_reward[non_zero_reward])
-                        if min_abs_reward < 1:
-                            ratio = 1/base_reward
-                            base_reward = 1
-                            actor_critic.update_critic(ratio)
-                            writer.add_scalar('base/new_base_reward',base_reward, g_step)
-                        elif min_abs_reward < base_reward:
-                            ratio = min_abs_reward/base_reward
-                            base_reward = min_abs_reward
-                            actor_critic.update_critic(ratio)
-                            writer.add_scalar('base/new_base_reward', base_reward, g_step)
-                reward = reward/base_reward
+                base_reward, ratio, update = update_base_reward(reward, base_reward)
+                if base_reward is not None:
+                    reward = reward/base_reward
+                if ratio != 1:
+                    actor_critic.update_critic(ratio)
+                if update:
+                    writer.add_scalar('base/new_base_reward', base_reward, g_step)
+
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -168,14 +165,13 @@ def main():
                         writer.add_scalar('analysis/reward_density', reward_count/(g_step - reward_start_step), g_step)
                         reward_count = 0
                         reward_start_step = g_step
-                # if args.track_primitive_reward:   # track primitive reward (before rescaling)
-                #     for info in infos:
-                #         if 'new_reward' in info:
-                #             new_rewards  = info['new_reward'] - primitive_reward_history
-                #             if len(new_rewards) > 0:
-                #                 print('new primitive rewards: ', new_rewards, ' time: ', g_step)
-                #                 primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
-
+                if args.track_primitive_reward:   # track primitive reward (before rescaling)
+                    for info in infos:
+                        if 'new_reward' in info:
+                            new_rewards  = info['new_reward'] - primitive_reward_history
+                            if len(new_rewards) > 0:
+                                print('new primitive rewards: ', new_rewards, ' time: ', g_step)
+                                primitive_reward_history =  primitive_reward_history.union(info['new_reward'])
 
             for idx in range(len(infos)):
                 info = infos[idx]
@@ -190,7 +186,7 @@ def main():
                         save_model = actor_critic
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
-                        torch.save(save_model, os.path.join(save_path, args.env_name + ".pt"))                        
+                        torch.save(save_model, os.path.join(save_path, args.env_name + now + ".pt"))                        
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, insert_entropy)
 
         with torch.no_grad():
@@ -206,12 +202,12 @@ def main():
             writer.add_scalar('analysis/value', value, j)
             writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
-
         rollouts.after_update()
 
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()
-
+    with open(os.path.join(save_path, args.env_name + now + '_reward.dic'), 'wb') as f:
+        pickle.dump(rewards, f)
 
 if __name__ == "__main__":
     main()

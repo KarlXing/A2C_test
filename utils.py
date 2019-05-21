@@ -138,3 +138,21 @@ def obs_representation(obs, modulation, g_device, input_neuro):
 def modulate_lr(entropy):
     exp_entropy = torch.exp(entropy)
     return exp_entropy/(torch.mean(exp_entropy))
+
+def update_base_reward(rewards, base_reward):  # retuen new base reward and ratio
+    if base_reward is not None and base_reward == 1:  # no update on base reward if it's already 1
+        return 1, 1, False
+    abs_reward = torch.abs(reward).squeeze()
+    non_zero_reward = (abs_reward != 0).nonzero().squeeze()
+    ratio = 1
+    update = False
+    if len(non_zero_reward) > 0:
+        min_abs_reward = max(1, torch.min(abs_reward[non_zero_reward]).item())
+        if base_reward is None:
+            base_reward = min_abs_reward
+            update = True
+        elif min_abs_reward < base_reward:
+            ratio = base_reward/min_abs_reward
+            base_reward = min_abs_reward
+            update_mode = True
+    return base_reward, ratio, update  # new base reward, ratio to update weight/bias of critic, whether change happens
