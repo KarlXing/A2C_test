@@ -20,6 +20,16 @@ elif [ $2 = 5 ]; then
     (sleep 10; date; eval $1) &
     (sleep 15; date; eval $1) &
     (sleep 20; date; eval $1)
+elif [ $2 = 9 ]; then
+    (date; eval $1) &
+    (sleep 5; date; eval $1) &
+    (sleep 10; date; eval $1) &
+    (sleep 15; date; eval $1) &
+    (sleep 20; date; eval $1) &
+    (sleep 25; date; eval $1) &
+    (sleep 30; date; eval $1) &
+    (sleep 35; date; eval $1) &
+    (sleep 40; date; eval $1)
 else
     echo "Invalid Loop"
 fi
