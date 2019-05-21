@@ -64,6 +64,12 @@ try:
 except OSError:
     pass
 
+reward_path = os.path.join(args.reward_dir, args.algo)
+try:
+    os.makedirs(reward_path)
+except OSError:
+    pass
+
 
 ######################################
 # main
@@ -189,7 +195,7 @@ def main():
                         save_model = actor_critic
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
-                        torch.save(save_model, os.path.join(save_path, args.env_name + now + ".pt"))                        
+                        torch.save(save_model, os.path.join(save_path, args.env_name + now + ".pt"))
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks, insert_entropy)
 
         with torch.no_grad():
@@ -209,7 +215,7 @@ def main():
 
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()
-    with open(os.path.join(save_path, args.env_name + now + '_reward.dic'), 'wb') as f:
+    with open(os.path.join(reward_path, args.env_name + now + '_reward.dic'), 'wb') as f:
         pickle.dump(rewards, f)
 
 if __name__ == "__main__":
