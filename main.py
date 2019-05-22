@@ -158,7 +158,7 @@ def main():
                 if base_reward is not None:
                     reward = reward/base_reward
                 if ratio != 1:
-                    actor_critic.update_critic(ratio)
+                    actor_critic.base.update_critic(ratio)
                 if update:
                     writer.add_scalar('base/new_base_reward', base_reward, g_step)
 

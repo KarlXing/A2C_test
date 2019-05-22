@@ -143,11 +143,11 @@ def update_base_reward(reward, base_reward):  # retuen new base reward and ratio
     if base_reward is not None and base_reward == 1:  # no update on base reward if it's already 1
         return 1, 1, False
     abs_reward = torch.abs(reward).squeeze()
-    non_zero_reward = (abs_reward != 0).nonzero().squeeze()
+    non_zero_reward = (abs_reward != 0).nonzero()
     ratio = 1
     update = False
     if len(non_zero_reward) > 0:
-        min_abs_reward = max(1, torch.min(abs_reward[non_zero_reward]).item())
+        min_abs_reward = max(1, torch.min(abs_reward[non_zero_reward.squeeze(1)]).item())
         if base_reward is None:
             base_reward = min_abs_reward
             update = True
