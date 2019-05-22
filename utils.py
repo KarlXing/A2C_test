@@ -139,7 +139,7 @@ def modulate_lr(entropy):
     exp_entropy = torch.exp(entropy)
     return exp_entropy/(torch.mean(exp_entropy))
 
-def update_base_reward(rewards, base_reward):  # retuen new base reward and ratio
+def update_base_reward(reward, base_reward):  # retuen new base reward and ratio
     if base_reward is not None and base_reward == 1:  # no update on base reward if it's already 1
         return 1, 1, False
     abs_reward = torch.abs(reward).squeeze()
