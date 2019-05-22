@@ -1,8 +1,8 @@
 #!/bin/sh
 
-command1="python3.6 -W ignore  --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 0" 
-command2="python3.6 -W ignore  --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 1" 
-command3="python3.6 -W ignore  --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 2" 
+command1="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 0" 
+command2="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 1" 
+command3="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 2" 
 
 (date; eval $command1) &
 (sleep 5; date; eval $command1) &
