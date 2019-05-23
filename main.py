@@ -210,7 +210,6 @@ def main():
             writer.add_scalar('analysis/advantage', advantage, j)
             writer.add_scalar('analysis/value_loss', value_loss, j)
             writer.add_scalar('analysis/value', value, j)
-            writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
 
         rollouts.after_update()
 
