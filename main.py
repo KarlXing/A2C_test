@@ -204,9 +204,10 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)
+        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)
 
         if args.track_value_loss:
+            writer.add_scalar('analysis/advantage', advantage, j)
             writer.add_scalar('analysis/value_loss', value_loss, j)
             writer.add_scalar('analysis/value', value, j)
             writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
