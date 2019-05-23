@@ -1,8 +1,8 @@
 #!/bin/sh
 
-command1="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 0  --track_value_loss" 
-command2="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 1  --track_value_loss" 
-command3="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 2  --track_value_loss" 
+command1="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 0  --track-value-loss" 
+command2="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 1  --track-value-loss" 
+command3="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --lr 1e-4  --reward-mode 2  --track-value-loss" 
 
 (date; eval $command1) &
 (sleep 5; date; eval $command1) &
