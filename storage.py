@@ -59,6 +59,10 @@ class RolloutStorage(object):
         self.recurrent_hidden_states[0].copy_(self.recurrent_hidden_states[-1])
         self.masks[0].copy_(self.masks[-1])
 
+    def update_ratio(self, ratio):
+        self.value_preds = self.value_preds * ratio
+        self.rewards = self.rewards * ratio
+
     def compute_returns(self, next_value, use_gae, gamma, tau):
         if use_gae:
             self.value_preds[-1] = next_value

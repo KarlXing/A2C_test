@@ -132,6 +132,7 @@ def main():
     base_reward = None
     rewards = {}
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
+    value_ratio = 1.0  # the ratio between actual state value and critic value
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -153,15 +154,23 @@ def main():
                     rewards[r.item()] += 1
 
             # reward rescaling
+            # if args.reward_mode == 2:
+            #     base_reward, ratio, update = update_base_reward(reward, base_reward)
+            #     if base_reward is not None:
+            #         reward = reward/base_reward
+            #     if ratio != 1:
+            #         actor_critic.base.update_critic(ratio)
+            #     if update:
+            #         writer.add_scalar('base/new_base_reward', base_reward, g_step)
             if args.reward_mode == 2:
-                base_reward, ratio, update = update_base_reward(reward, base_reward)
-                if base_reward is not None:
-                    reward = reward/base_reward
-                if ratio != 1:
-                    actor_critic.base.update_critic(ratio)
-                if update:
-                    writer.add_scalar('base/new_base_reward', base_reward, g_step)
-
+                max_value_appeared = torch.max(value).item()
+                if max_value_appeared/args.max_value > args.max_ratio:
+                    adjusted_ratio = args.max_value/max_value_appeared
+                    value_ratio = value_ratio * adjusted_ratio
+                    actor_critic.base.update_critic(adjusted_ratio)
+                    rollouts.update_ratio(adjusted_ratio)
+                    writer.add_scalar('analysis/value_ratio', value_ratio, g_step)
+                reward = reward * value_ratio
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -204,7 +213,11 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)
+        if args.sync_advantage:
+            adv_ratio = value_ratio
+        else:
+            adv_ratio = 1.0
+        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation, adv_ratio)
 
         if args.track_value_loss:
             writer.add_scalar('analysis/advantage', advantage, j)
