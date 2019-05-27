@@ -213,7 +213,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.sync_advantage:
+        if args.sync_advantage and args.reward_mode == 2:
             adv_ratio = value_ratio
         else:
             adv_ratio = 1.0
