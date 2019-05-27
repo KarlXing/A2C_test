@@ -163,7 +163,7 @@ def main():
             #     if update:
             #         writer.add_scalar('base/new_base_reward', base_reward, g_step)
             if args.reward_mode == 2:
-                max_value_appeared = torch.max(value).item()
+                max_value_appeared = torch.mean(value).item()
                 if max_value_appeared/args.max_value > args.max_ratio:
                     adjusted_ratio = args.max_value/max_value_appeared
                     value_ratio = value_ratio * adjusted_ratio
