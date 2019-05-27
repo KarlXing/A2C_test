@@ -15,7 +15,7 @@ command3="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-eval
 (sleep 40; date; eval $command3; echo "done")
 
 wait 
-
+echo "mean"
 echo $command1 >> command
 echo $command2 >> command
 echo $command3 >> command
