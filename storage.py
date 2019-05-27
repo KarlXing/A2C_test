@@ -40,7 +40,7 @@ class RolloutStorage(object):
         self.entropys = self.entropys.to(device)
         self.lr = self.lr.to(device)
 
-    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks, entropys):
+    def insert(self, obs, recurrent_hidden_states, actions, action_log_probs, value_preds, rewards, masks):
         self.obs[self.step + 1].copy_(obs)
         self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
         self.actions[self.step].copy_(actions)
@@ -49,7 +49,6 @@ class RolloutStorage(object):
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
         self.step = (self.step + 1) % self.num_steps
-        self.entropys[self.step].copy_(entropys)
 
     def insert_lr(self, lr):
         self.lr.copy_(lr)
