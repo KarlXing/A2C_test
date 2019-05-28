@@ -107,6 +107,8 @@ def get_args():
                         help='ratio above this max-ratio will cause critic adjustation')
     parser.add_argument('--sync-advantage', action='store_true', default=False,
                         help='after adjusting the critic, how to calculate advantage')
+    parser.add_argument('--initiate-steps', type=int, default=100,
+                        help='how many steps to run to initiate running_mean_value')
 
     args = parser.parse_args()
 

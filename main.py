@@ -133,6 +133,24 @@ def main():
     rewards = {}
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
     value_ratio = 1.0  # the ratio between actual state value and critic value
+    running_mean_value = 0.0
+
+    # initialize the running_mean_value
+    for i in range(args.initiate_steps):
+        for step in range(args.num_steps):
+            with torch.no_grad():
+                value, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
+                        rollouts.obs[step],
+                        rollouts.recurrent_hidden_states[step],
+                        rollouts.masks[step])
+            obs, reward, done, infos = envs.step(action)
+            obs = obs/255
+            running_mean_value = running_mean_value * 0.99 + 0.01 * torch.mean(value).item()
+            masks = torch.FloatTensor([[0.0] if done_ else [1.0]
+                                       for done_ in done])
+            rollouts.insert_part(obs, recurrent_hidden_states, masks)
+
+    rollouts.reset()
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -163,9 +181,9 @@ def main():
             #     if update:
             #         writer.add_scalar('base/new_base_reward', base_reward, g_step)
             if args.reward_mode == 2:
-                max_value_appeared = torch.mean(value).item()
-                if max_value_appeared/args.max_value > args.max_ratio:
-                    adjusted_ratio = args.max_value/max_value_appeared
+                running_mean_value = 0.99*running_mean_value + 0.01(torch.mean(value).item())
+                if running_mean_value/args.max_value > args.max_ratio:
+                    adjusted_ratio = args.max_value/running_mean_value
                     value_ratio = value_ratio * adjusted_ratio
                     actor_critic.base.update_critic(adjusted_ratio)
                     rollouts.update_ratio(adjusted_ratio)

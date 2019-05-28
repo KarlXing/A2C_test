@@ -48,11 +48,31 @@ class RolloutStorage(object):
         self.value_preds[self.step].copy_(value_preds)
         self.rewards[self.step].copy_(rewards)
         self.masks[self.step + 1].copy_(masks)
-        self.step = (self.step + 1) % self.num_steps
         self.entropys[self.step].copy_(entropys)
+        self.step = (self.step + 1) % self.num_steps
 
     def insert_lr(self, lr):
         self.lr.copy_(lr)
+
+    def insert_part(self, obs, recurrent_hidden_states, masks):
+        self.obs[self.step + 1].copy_(obs)
+        self.recurrent_hidden_states[self.step + 1].copy_(recurrent_hidden_states)
+        self.masks[self.step + 1].copy_(masks)
+        self.step = (self.step + 1) % self.num_steps
+
+    def reset(self):
+        self.obs = self.obs * 0
+        self.recurrent_hidden_states = self.recurrent_hidden_states * 0
+        self.rewards = self.rewards * 0
+        self.value_preds = self.value_preds * 0
+        self.returns = self.returns * 0
+        self.action_log_probs = self.action_log_probs * 0
+        self.actions = self.actions * 0
+        self.step = 0
+        self.entropys = self.entropys * 0
+        # to avoid reload to device, we don't build another tensor
+        self.masks = (self.masks + 1) / (self.masks + 1) # reset as 1 and plus 1 to avoid divide by 0
+        self.lr = (self.lr + 1) / (self.lr + 1) # reset as 1 and plus 1 to avoid divide by 0
 
     def after_update(self):
         self.obs[0].copy_(self.obs[-1])
