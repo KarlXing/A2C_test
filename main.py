@@ -181,7 +181,7 @@ def main():
             #     if update:
             #         writer.add_scalar('base/new_base_reward', base_reward, g_step)
             if args.reward_mode == 2:
-                running_mean_value = 0.99*running_mean_value + 0.01(torch.mean(value).item())
+                running_mean_value = 0.99 * running_mean_value + 0.01 * torch.mean(value).item()
                 if running_mean_value/args.max_value > args.max_ratio:
                     adjusted_ratio = args.max_value/running_mean_value
                     value_ratio = value_ratio * adjusted_ratio
@@ -242,6 +242,8 @@ def main():
             writer.add_scalar('analysis/advantage', advantage, j)
             writer.add_scalar('analysis/value_loss', value_loss, j)
             writer.add_scalar('analysis/value', value, j)
+            writer.add_scalar('analysis/original_value', value/value_ratio, j)
+
 
         rollouts.after_update()
 
