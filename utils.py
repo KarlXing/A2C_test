@@ -156,3 +156,38 @@ def update_base_reward(reward, base_reward):  # retuen new base reward and ratio
             base_reward = min_abs_reward
             update_mode = True
     return base_reward, ratio, update  # new base reward, ratio to update weight/bias of critic, whether change happens
+
+
+class RunningMeanStd(object):
+    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+    def __init__(self, epsilon=1e-4, shape=()):
+        self.mean = torch.zeros(shape)
+        self.var = torch.ones(shape)
+        self.count = epsilon
+
+    def update(self, x):
+        batch_mean = torch.mean(x, axis=0)
+        batch_var = torch.var(x, axis=0)
+        batch_count = x.shape[0]
+        self.update_from_moments(batch_mean, batch_var, batch_count)
+
+    def update_from_moments(self, batch_mean, batch_var, batch_count):
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+
+    def to(self, device):
+        self.mean = self.mean.to(device)
+        self.var = self.var.to(device)
+
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
+    delta = batch_mean - mean
+    tot_count = count + batch_count
+
+    new_mean = mean + delta * batch_count / tot_count
+    m_a = var * count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + (delta ** 2) * count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
+
+    return new_mean, new_var, new_count

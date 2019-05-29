@@ -20,7 +20,7 @@ from visualize import visdom_plot
 from tensorboardX import SummaryWriter
 import pickle
 import datetime
-from utils import update_base_reward
+from utils import update_base_reward, RunningMeanStd
 
 #####################################
 # prepare
@@ -85,24 +85,40 @@ def main():
                         envs.observation_space.shape, envs.action_space,
                         actor_critic.recurrent_hidden_state_size)
 
+    rwd_rms = RunningMeanStd()
+    obs_rms = RunningMeanStd(shape=(1,1,84,84))
+    obs_rms.to(device)
+
     # initiate env and storage rollout
     obs = envs.reset()
     obs = obs/255
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
+    # init rms 
+    assert((rollouts.obs.size()[2] == 4) and len(rollouts.obs.size()) == 5)
+    for step in range(args.num_steps * args.pre_obs_rms_steps):
+        actions = torch.from_numpy(np.random.randint(0, envs.action_space.n, size=(args.num_processes,)))
+        obs, reward, done, infos  = envs.step(actions)
+
+        rollouts.insert_obs(obs)
+        if step % args.num_steps == 0:
+            obs_rms.update(rollouts.obs[:,:,3:,:,:].view(-1, 1, 84, 84))  
+
+    # clean rollouts before start to train
+    rollouts.clean()
+
     # necessary variabels
     episode_rewards = deque(maxlen=10) # store last 10 episode rewards
     g_step = 0 # global step
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
-
 
     for j in range(num_updates):
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
+                value, value_in, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
@@ -110,11 +126,11 @@ def main():
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             obs = obs/255
-            for r in reward:
-                if r.item() not in rewards:
-                    rewards[r.item()] = 0
-                else:
-                    rewards[r.item()] += 1
+            rnd_obs = obs[:,3:,:,:] # only the last frame
+
+            reward_in = actor_critic.compute_intrinsic_reward(((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5))
+            # reward_in = reward_in / torch.sqrt(rwd_rms.var)
+            # rescale intrinsic rewards after all the steps
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -138,14 +154,29 @@ def main():
                         torch.save(save_model, os.path.join(save_path, args.env_name + now + ".pt"))
             rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
 
+        # update obs_rms
+        rnd_obs_batch = rollouts.obs[1:].view(-1, envs.observation_space.shape)[:,3:,:,:]
+        rnd_obs_mean = torch.mean(rnd_obs_batch, dim=0)
+        rnd_obs_std = torch.std(rnd_obs_batch, dim=0)
+        rnd_obs_cnt = rnd_obs_batch.size()[0]
+        obs_rms.update_from_moments(rnd_obs_mean, rnd_obs_std, rnd_obs_cnt)
+
+        # update rwd_rms and update reward_in
+        reward_in_batch = rollouts.reward_in.view(-1, 1)
+        reward_in_mean = torch.mean(reward_in_batch, dim=0)
+        reward_in_std = torch.std(reward_in_batch, dim=0)
+        reward_in_cnt = reward_in_batch.size()[0]
+        rwd_rms.update_from_moments(reward_in_mean, reward_in_std, reward_in_cnt)
+
+        rollouts.reward_in = rollouts.reward_in / torch.sqrt(rwd_rms.var)
+
         with torch.no_grad():
             masks_device.copy_(masks)
-            next_value = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
+            value_ex, value_in = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
 
-        rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
+        rollouts.compute_returns(value_ex, value_in, args.use_gae, args.gamma, args.tau)
 
-
-        value_loss, action_loss, dist_entropy = agent.update(rollouts)
+        value_loss, action_loss, dist_entropy, rnd_loss = agent.update(rollouts, obs_rms)
 
         rollouts.after_update()
 

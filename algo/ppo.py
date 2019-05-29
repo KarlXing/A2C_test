@@ -15,7 +15,8 @@ class PPO():
                  lr=None,
                  eps=None,
                  max_grad_norm=None,
-                 use_clipped_value_loss=False):
+                 use_clipped_value_loss=False,
+                 rnd_loss_coef=0.5):
 
         self.actor_critic = actor_critic
 
@@ -31,14 +32,15 @@ class PPO():
 
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
-    def update(self, rollouts):
-        advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
+    def update(self, rollouts, obs_rms):
+        advantages = 2 * (rollouts.returns_ex[:-1] - rollouts.value_preds_ex[:-1]) + (rollouts.returns_in[:-1]  - rollouts.value_preds_in[:-1])
         advantages = (advantages - advantages.mean()) / (
             advantages.std() + 1e-5)
 
         value_loss_epoch = 0
         action_loss_epoch = 0
         dist_entropy_epoch = 0
+        rnd_loss_epoch = 0
 
         for e in range(self.ppo_epoch):
             if self.actor_critic.is_recurrent:
@@ -50,11 +52,11 @@ class PPO():
 
             for sample in data_generator:
                 obs_batch, recurrent_hidden_states_batch, actions_batch, \
-                   value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, \
+                   value_preds_ex_batch, value_preds_in_batch, return_ex_batch, return_in_batch, masks_batch, old_action_log_probs_batch, \
                         adv_targ = sample
 
                 # Reshape to do in a single forward pass for all steps
-                values, action_log_probs, dist_entropy, _ = self.actor_critic.evaluate_actions(
+                values_ex, values_in, action_log_probs, dist_entropy = self.actor_critic.evaluate_actions(
                     obs_batch, recurrent_hidden_states_batch,
                     masks_batch, actions_batch)
 
@@ -65,17 +67,29 @@ class PPO():
                 action_loss = -torch.min(surr1, surr2).mean()
 
                 if self.use_clipped_value_loss:
-                    value_pred_clipped = value_preds_batch + \
-                        (values - value_preds_batch).clamp(-self.clip_param, self.clip_param)
-                    value_losses = (values - return_batch).pow(2)
-                    value_losses_clipped = (value_pred_clipped - return_batch).pow(2)
-                    value_loss = .5 * torch.max(value_losses, value_losses_clipped).mean()
+                    value_pred_ex_clipped = value_preds_ex_batch + \
+                        (values_ex - value_preds_ex_batch).clamp(-self.clip_param, self.clip_param)
+                    value_losses_ex = (values_ex - return_ex_batch).pow(2)
+                    value_losses_ex_clipped = (value_pred_ex_clipped - return_ex_batch).pow(2)
+
+                    value_pred_in_clipped = value_preds_in_batch + \
+                        (values_in - value_preds_in_batch).clamp(-self.clip_param, self.clip_param)
+                    value_losses_in = (values_in - return_in_batch).pow(2)
+                    value_losses_in_clipped = (value_pred_in_clipped - return_in_batch).pow(2)
+
+                    value_loss = .5 * (torch.max(value_losses_in, value_losses_in_clipped).mean() + torch.max(value_losses_ex, value_losses_ex_clipped).mean())
                 else:
-                    value_loss = 0.5 * F.mse_loss(return_batch, values)
+                    value_loss = 0.5 * (F.mse_loss(return_batch_ex, values_ex) + F.mse_loss(return_batch_in, values_in))
+
+                # random network loss
+                rnd_obs = obs_batch[:,3:,:,:]
+                rnd_obs = ((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5)
+                predict_feature, target_feature = actor_critic.rnd(rnd_obs)
+                rnd_loss = F.mse_loss(predict_feature, target_feature.detach())
 
                 self.optimizer.zero_grad()
                 (value_loss * self.value_loss_coef + action_loss -
-                 dist_entropy * self.entropy_coef).backward()
+                 dist_entropy * self.entropy_coef + rnd_loss * self.rnd_loss_coef).backward()
                 nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
                                          self.max_grad_norm)
                 self.optimizer.step()
@@ -83,11 +97,13 @@ class PPO():
                 value_loss_epoch += value_loss.item()
                 action_loss_epoch += action_loss.item()
                 dist_entropy_epoch += dist_entropy.item()
+                rnd_loss_epoch += rnd_loss.item()
 
         num_updates = self.ppo_epoch * self.num_mini_batch
 
         value_loss_epoch /= num_updates
         action_loss_epoch /= num_updates
         dist_entropy_epoch /= num_updates
+        rnd_loss_epoch /= num_updates
 
-        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch
+        return value_loss_epoch, action_loss_epoch, dist_entropy_epoch, rnd_loss_epoch

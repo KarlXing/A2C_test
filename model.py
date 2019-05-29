@@ -1,9 +1,85 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import init
 
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_, tanh_g, get_g_entropy
+
+class RND(nn.Module):
+    def __init__(self, obs_shape, hidden_size=512):
+        super(RND, self).__init__()
+        input_channel = obs_shape[0]
+
+        feature_output = 7 * 7 * 64
+        self.predictor = nn.Sequential(
+            nn.Conv2d(
+                in_channels=input_channel,
+                out_channels=32,
+                kernel_size=8,
+                stride=4),
+            nn.ReLU(),
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=64,
+                kernel_size=4,
+                stride=2),
+            nn.ReLU(),
+            nn.Conv2d(
+                in_channels=64,
+                out_channels=64,
+                kernel_size=3,
+                stride=1),
+            nn.ReLU(),
+            Flatten(),
+            nn.Linear(feature_output, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512)
+        )
+
+        self.target = nn.Sequential(
+            nn.Conv2d(
+                in_channels=input_channel,
+                out_channels=32,
+                kernel_size=8,
+                stride=4),
+            nn.ReLU(),
+            nn.Conv2d(
+                in_channels=32,
+                out_channels=64,
+                kernel_size=4,
+                stride=2),
+            nn.ReLU(),
+            nn.Conv2d(
+                in_channels=64,
+                out_channels=64,
+                kernel_size=3,
+                stride=1),
+            nn.ReLU(),
+            Flatten(),
+            nn.Linear(feature_output, 512)
+        )
+
+        for p in self.modules():
+            if isinstance(p, nn.Conv2d):
+                init.orthogonal_(p.weight, np.sqrt(2))
+                p.bias.data.zero_()
+
+            if isinstance(p, nn.Linear):
+                init.orthogonal_(p.weight, np.sqrt(2))
+                p.bias.data.zero_()
+        
+        for param in self.target.parameters():
+            param.requires_grad = False
+
+    def forward(self, next_obs):
+        target_feature = self.target(next_obs)
+        predict_feature = self.predictor(next_obs)
+
+        return predict_feature, target_feature
+
 
 
 class Flatten(nn.Module):
@@ -19,6 +95,7 @@ class Policy(nn.Module):
 
         if len(obs_shape) == 3:
             self.base = CNNBase(obs_shape, activation=activation, **base_kwargs)
+            self.rnd = RND(obs_shape)
             #print("Use no modulation in model")
         elif len(obs_shape) == 1:
             self.base = MLPBase(obs_shape[0], **base_kwargs)
@@ -48,7 +125,7 @@ class Policy(nn.Module):
         raise NotImplementedError
 
     def act(self, inputs, rnn_hxs, masks, deterministic=False):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value_ex, value_in, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         
         dist = self.dist(actor_features)
         dist_entropy = dist.entropy()
@@ -61,17 +138,23 @@ class Policy(nn.Module):
         return value, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
 
     def get_value(self, inputs, rnn_hxs, masks):
-        value, _, _ = self.base(inputs, rnn_hxs, masks)
-        return value
+        value_ex, value_in, _, _ = self.base(inputs, rnn_hxs, masks)
+        return value_ex, value_in
 
     def evaluate_actions(self, inputs, rnn_hxs, masks, action):
-        value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value_ex, value_in, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value, action_log_probs, dist_entropy
+        return value_ex, valuein_in, action_log_probs, dist_entropy
+
+    def compute_intrinsic_reward(self, next_obs):
+        target_next_feature = self.rnd.target(next_obs)
+        predict_next_feature = self.rnd.predictor(next_obs)
+        intrinsic_reward = (target_next_feature - predict_next_feature).pow(2).sum(1) / 2
+        return intrinsic_reward
 
 
 class NNBase(nn.Module):
@@ -190,7 +273,8 @@ class CNNBase(NNBase):
         init_ = lambda m: init(m,
             nn.init.orthogonal_,
             lambda x: nn.init.constant_(x, 0))
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear_in = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear_ex = init_(nn.Linear(hidden_size, 1))
 
         self.train()
 
@@ -204,11 +288,7 @@ class CNNBase(NNBase):
         if self.is_recurrent:  # here the gru is based on f_c. In practice, it's not used. So doesn't matter
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
 
-        return self.critic_linear(x), x, rnn_hxs
-
-    def update_critic(self, ratio):
-        self.critic_linear.weight.data = self.critic_linear.weight.data * ratio
-        self.critic_linear.bias.data = self.critic_linear.bias.data * ratio
+        return self.critic_linear_in(x), self.critic_linear_ex(x), x, rnn_hxs
 
 
 class MLPBase(NNBase):

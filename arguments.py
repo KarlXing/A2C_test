@@ -107,6 +107,8 @@ def get_args():
                         help='ratio above this max-ratio will cause critic adjustation')
     parser.add_argument('--sync-advantage', action='store_true', default=False,
                         help='after adjusting the critic, how to calculate advantage')
+    parser.add_argument('--pre-obs-rms-steps', type=int, default=50,
+                        help='how many steps to run to initialize rms')
 
     args = parser.parse_args()
 
