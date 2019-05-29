@@ -187,6 +187,7 @@ def main():
                     value_ratio = value_ratio * adjusted_ratio
                     actor_critic.base.update_critic(adjusted_ratio)
                     rollouts.update_ratio(adjusted_ratio)
+                    running_mean_value = args.max_value
                     writer.add_scalar('analysis/value_ratio', value_ratio, g_step)
                 reward = reward * value_ratio
 
