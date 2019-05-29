@@ -61,6 +61,10 @@ class RolloutStorage(object):
     def insert_lr(self, lr):
         self.lr.copy_(lr)
 
+    def insert_obs(self, obs):
+        self.obs[self.step + 1].copy_(obs)
+        self.step = (self.step + 1) % self.num_steps
+
     def clean(self):   # called when initialization is done
         self.obs = self.obs * 0
         self.step  = 0
@@ -90,7 +94,7 @@ class RolloutStorage(object):
                 self.returns_in[step] = self.returns_in[step + 1] * gamma + self.rewards_in[step]
 
     def feed_forward_generator(self, advantages, num_mini_batch):
-        num_steps, num_processes = self.rewards.size()[0:2]
+        num_steps, num_processes = self.rewards_ex.size()[0:2]
         batch_size = num_processes * num_steps
         assert batch_size >= num_mini_batch, (
             "PPO requires the number of processes ({}) "

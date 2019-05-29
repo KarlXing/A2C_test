@@ -86,6 +86,7 @@ def main():
                         actor_critic.recurrent_hidden_state_size)
 
     rwd_rms = RunningMeanStd()
+    rwd_rms.to(device)
     obs_rms = RunningMeanStd(shape=(1,1,84,84))
     obs_rms.to(device)
 
@@ -98,7 +99,7 @@ def main():
     # init rms 
     assert((rollouts.obs.size()[2] == 4) and len(rollouts.obs.size()) == 5)
     for step in range(args.num_steps * args.pre_obs_rms_steps):
-        actions = torch.from_numpy(np.random.randint(0, envs.action_space.n, size=(args.num_processes,)))
+        actions = torch.from_numpy(np.random.randint(0, envs.action_space.n, size=(args.num_processes,))).unsqueeze(1)
         obs, reward, done, infos  = envs.step(actions)
 
         rollouts.insert_obs(obs)
@@ -118,17 +119,17 @@ def main():
             # Sample actions
             g_step += 1
             with torch.no_grad():
-                value, value_in, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
+                value_ex, value_in, action, action_log_prob, recurrent_hidden_states, entropy, f_a = actor_critic.act(
                         rollouts.obs[step],
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
             # Obser reward and next obs
-            obs, reward, done, infos = envs.step(action)
+            obs, reward_ex, done, infos = envs.step(action)
             obs = obs/255
             rnd_obs = obs[:,3:,:,:] # only the last frame
 
-            reward_in = actor_critic.compute_intrinsic_reward(((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5))
+            reward_in = actor_critic.compute_intrinsic_reward(((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5)).unsqueeze(1)
             # reward_in = reward_in / torch.sqrt(rwd_rms.var)
             # rescale intrinsic rewards after all the steps
 
@@ -152,23 +153,23 @@ def main():
                         if args.cuda:
                             save_model = copy.deepcopy(actor_critic).cpu()
                         torch.save(save_model, os.path.join(save_path, args.env_name + now + ".pt"))
-            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value, reward, masks)
+            rollouts.insert(obs, recurrent_hidden_states, action, action_log_prob, value_ex, value_in, reward_ex, reward_in, masks)
 
         # update obs_rms
-        rnd_obs_batch = rollouts.obs[1:].view(-1, envs.observation_space.shape)[:,3:,:,:]
+        rnd_obs_batch = rollouts.obs[1:].view(-1, *envs.observation_space.shape)[:,3:,:,:]
         rnd_obs_mean = torch.mean(rnd_obs_batch, dim=0)
         rnd_obs_std = torch.std(rnd_obs_batch, dim=0)
         rnd_obs_cnt = rnd_obs_batch.size()[0]
         obs_rms.update_from_moments(rnd_obs_mean, rnd_obs_std, rnd_obs_cnt)
 
         # update rwd_rms and update reward_in
-        reward_in_batch = rollouts.reward_in.view(-1, 1)
+        reward_in_batch = rollouts.rewards_in.view(-1, 1)
         reward_in_mean = torch.mean(reward_in_batch, dim=0)
         reward_in_std = torch.std(reward_in_batch, dim=0)
         reward_in_cnt = reward_in_batch.size()[0]
         rwd_rms.update_from_moments(reward_in_mean, reward_in_std, reward_in_cnt)
 
-        rollouts.reward_in = rollouts.reward_in / torch.sqrt(rwd_rms.var)
+        rollouts.rewards_in = rollouts.rewards_in / torch.sqrt(rwd_rms.var)
 
         with torch.no_grad():
             masks_device.copy_(masks)

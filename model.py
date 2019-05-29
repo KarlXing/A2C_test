@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import init
+import numpy as np
 
 from distributions import Categorical, DiagGaussian
 from utils import init, init_normc_, tanh_g, get_g_entropy
@@ -9,7 +9,7 @@ from utils import init, init_normc_, tanh_g, get_g_entropy
 class RND(nn.Module):
     def __init__(self, obs_shape, hidden_size=512):
         super(RND, self).__init__()
-        input_channel = obs_shape[0]
+        input_channel = 1
 
         feature_output = 7 * 7 * 64
         self.predictor = nn.Sequential(
@@ -64,11 +64,11 @@ class RND(nn.Module):
 
         for p in self.modules():
             if isinstance(p, nn.Conv2d):
-                init.orthogonal_(p.weight, np.sqrt(2))
+                nn.init.orthogonal_(p.weight, np.sqrt(2))
                 p.bias.data.zero_()
 
             if isinstance(p, nn.Linear):
-                init.orthogonal_(p.weight, np.sqrt(2))
+                nn.init.orthogonal_(p.weight, np.sqrt(2))
                 p.bias.data.zero_()
         
         for param in self.target.parameters():
@@ -135,7 +135,7 @@ class Policy(nn.Module):
             action = dist.sample()
         action_log_probs = dist.log_probs(action)
 
-        return value, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
+        return value_ex, value_in, action, action_log_probs, rnn_hxs, dist_entropy, actor_features
 
     def get_value(self, inputs, rnn_hxs, masks):
         value_ex, value_in, _, _ = self.base(inputs, rnn_hxs, masks)
@@ -148,7 +148,7 @@ class Policy(nn.Module):
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
 
-        return value_ex, valuein_in, action_log_probs, dist_entropy
+        return value_ex, value_in, action_log_probs, dist_entropy
 
     def compute_intrinsic_reward(self, next_obs):
         target_next_feature = self.rnd.target(next_obs)

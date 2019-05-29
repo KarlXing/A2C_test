@@ -79,12 +79,12 @@ class PPO():
 
                     value_loss = .5 * (torch.max(value_losses_in, value_losses_in_clipped).mean() + torch.max(value_losses_ex, value_losses_ex_clipped).mean())
                 else:
-                    value_loss = 0.5 * (F.mse_loss(return_batch_ex, values_ex) + F.mse_loss(return_batch_in, values_in))
+                    value_loss = 0.5 * (F.mse_loss(return_ex_batch, values_ex) + F.mse_loss(return_in_batch, values_in))
 
                 # random network loss
                 rnd_obs = obs_batch[:,3:,:,:]
                 rnd_obs = ((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5)
-                predict_feature, target_feature = actor_critic.rnd(rnd_obs)
+                predict_feature, target_feature = self.actor_critic.rnd(rnd_obs)
                 rnd_loss = F.mse_loss(predict_feature, target_feature.detach())
 
                 self.optimizer.zero_grad()
