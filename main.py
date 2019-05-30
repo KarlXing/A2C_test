@@ -142,7 +142,7 @@ def main():
             if args.log_evaluation:
                 writer.add_scalar('analysis/entropy', entropy.mean().item(), g_step)
                 writer.add_scalar('analysis/reward_in', reward_in[0].item(), g_step)
-                writer.add_scalar('analysis/action_log_prob', torch.exp(action_log_prob[0].item()), g_step)
+                writer.add_scalar('analysis/action_log_prob', torch.exp(action_log_prob[0]).item(), g_step)
 
             for idx in range(len(infos)):
                 info = infos[idx]
