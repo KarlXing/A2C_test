@@ -16,7 +16,7 @@ class PPO():
                  eps=None,
                  max_grad_norm=None,
                  use_clipped_value_loss=False,
-                 rnd_loss_coef=0.5):
+                 rnd_loss_coef=0.2):
 
         self.actor_critic = actor_critic
 
@@ -29,7 +29,7 @@ class PPO():
 
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
-
+        self.rnd_loss_coef = rnd_loss_coef
         self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
 
     def update(self, rollouts, obs_rms):

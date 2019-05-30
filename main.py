@@ -113,6 +113,7 @@ def main():
     episode_rewards = deque(maxlen=10) # store last 10 episode rewards
     g_step = 0 # global step
     masks_device = torch.ones(args.num_processes, 1).to(device)  # mask on gpu
+    intrinsic_reward = 0.0
 
     for j in range(num_updates):
         for step in range(args.num_steps):
@@ -129,15 +130,19 @@ def main():
             obs = obs/255
             rnd_obs = obs[:,3:,:,:] # only the last frame
 
-            reward_in = actor_critic.compute_intrinsic_reward(((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5)).unsqueeze(1)
+            with torch.no_grad():
+                reward_in = actor_critic.compute_intrinsic_reward(((rnd_obs - obs_rms.mean) / torch.sqrt(obs_rms.var)).clamp(-5, 5)).unsqueeze(1)
             # reward_in = reward_in / torch.sqrt(rwd_rms.var)
             # rescale intrinsic rewards after all the steps
 
+            intrinsic_reward += reward_in[0].item()
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/entropy', entropy.mean().item(), g_step)
+                writer.add_scalar('analysis/reward_in', reward_in[0].item(), g_step)
+                writer.add_scalar('analysis/action_log_prob', torch.exp(action_log_prob[0].item()), g_step)
 
             for idx in range(len(infos)):
                 info = infos[idx]
@@ -147,6 +152,9 @@ def main():
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
                     mean_rewards = np.mean(episode_rewards)
                     writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
+                    if idx == 0:
+                        writer.add_scalar('analysis/reward_in_episode', intrinsic_reward, steps_done)
+                        intrinsic_reward = 0.0
                     if mean_rewards > best_score:
                         best_score = mean_rewards
                         save_model = actor_critic
