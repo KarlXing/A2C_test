@@ -70,7 +70,7 @@ class A2C_ACKTR():
             self.optimizer.acc_stats = False
 
         self.optimizer.zero_grad()
-        (value_loss * self.value_loss_coef + action_loss -
+        (value_loss * self.value_loss_coef / adv_ratio + action_loss -
          dist_entropy * self.entropy_coef).backward()
 
         if self.acktr == False:
