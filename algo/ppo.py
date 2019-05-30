@@ -16,7 +16,7 @@ class PPO():
                  eps=None,
                  max_grad_norm=None,
                  use_clipped_value_loss=False,
-                 rnd_loss_coef=0.05):
+                 rnd_loss_coef=0.5):
 
         self.actor_critic = actor_critic
 

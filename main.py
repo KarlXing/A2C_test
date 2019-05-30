@@ -141,7 +141,7 @@ def main():
 
             if args.log_evaluation:
                 writer.add_scalar('analysis/entropy', entropy.mean().item(), g_step)
-                writer.add_scalar('analysis/reward_in', (reward_in[0]/torch.sqrt(rwd_rms.var)).item(), g_step)
+                # writer.add_scalar('analysis/reward_in', (reward_in[0]/torch.sqrt(rwd_rms.var)).item(), g_step)
                 writer.add_scalar('analysis/action_log_prob', torch.exp(action_log_prob[0]).item(), g_step)
 
             for idx in range(len(infos)):
@@ -152,9 +152,9 @@ def main():
                     writer.add_scalar('data/reward', info['episode']['r'], steps_done)
                     mean_rewards = np.mean(episode_rewards)
                     writer.add_scalar('data/avg_reward', mean_rewards, steps_done)
-                    if idx == 0:
-                        writer.add_scalar('analysis/reward_in_episode', intrinsic_reward/torch.sqrt(rwd_rms.var).item(), steps_done)
-                        intrinsic_reward = 0.0
+                    # if idx == 0:
+                    #     writer.add_scalar('analysis/reward_in_episode', intrinsic_reward/torch.sqrt(rwd_rms.var).item(), steps_done)
+                    #     intrinsic_reward = 0.0
                     if mean_rewards > best_score:
                         best_score = mean_rewards
                         save_model = actor_critic
@@ -178,6 +178,7 @@ def main():
         rwd_rms.update_from_moments(reward_in_mean, reward_in_std, reward_in_cnt)
 
         rollouts.rewards_in = rollouts.rewards_in / torch.sqrt(rwd_rms.var)
+        writer.add_scalar('analysis/reward_in', torch.mean(rollouts.reward_in).item(), g_step)
         with torch.no_grad():
             masks_device.copy_(masks)
             value_ex, value_in = actor_critic.get_value(obs, recurrent_hidden_states, masks_device)
