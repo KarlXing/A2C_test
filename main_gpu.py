@@ -47,7 +47,7 @@ def main():
 
     observation_space_shape = (4,210,160)
     action_space = gym.spaces.discrete.Discrete(8)
-    actor_critic = Policy(observation_space_shape, action_space, args.activation,
+    actor_critic = Policy(observation_space_shape, action_space, args.activation, True,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
