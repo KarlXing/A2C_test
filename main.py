@@ -165,17 +165,19 @@ def main():
 
         # update obs_rms
         rnd_obs_batch = rollouts.obs[1:].view(-1, *envs.observation_space.shape)[:,3:,:,:]
-        rnd_obs_mean = torch.mean(rnd_obs_batch, dim=0)
-        rnd_obs_std = torch.std(rnd_obs_batch, dim=0)
-        rnd_obs_cnt = rnd_obs_batch.size()[0]
-        obs_rms.update_from_moments(rnd_obs_mean, rnd_obs_std, rnd_obs_cnt)
+        # rnd_obs_mean = torch.mean(rnd_obs_batch, dim=0)
+        # rnd_obs_var = torch.var(rnd_obs_batch, dim=0)
+        # rnd_obs_cnt = rnd_obs_batch.size()[0]
+        # obs_rms.update_from_moments(rnd_obs_mean, rnd_obs_var, rnd_obs_cnt)
+        obs_rms.update(rnd_obs_batch)
 
         # update rwd_rms and update reward_in
         reward_in_batch = rollouts.rewards_in.view(-1, 1)
-        reward_in_mean = torch.mean(reward_in_batch, dim=0)
-        reward_in_std = torch.std(reward_in_batch, dim=0)
-        reward_in_cnt = reward_in_batch.size()[0]
-        rwd_rms.update_from_moments(reward_in_mean, reward_in_std, reward_in_cnt)
+        # reward_in_mean = torch.mean(reward_in_batch, dim=0)
+        # reward_in_var = torch.var(reward_in_batch, dim=0)
+        # reward_in_cnt = reward_in_batch.size()[0]
+        # rwd_rms.update_from_moments(reward_in_mean, reward_in_var, reward_in_cnt)
+        rwd_rms.update(reward_in_batch)
 
         rollouts.rewards_in = rollouts.rewards_in / torch.sqrt(rwd_rms.var)
         writer.add_scalar('analysis/reward_in', torch.mean(rollouts.rewards_in).item(), g_step)
