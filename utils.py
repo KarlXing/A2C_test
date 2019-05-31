@@ -172,11 +172,11 @@ class RunningMeanStd(object):
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
     def update_from_moments(self, batch_mean, batch_var, batch_count):
-        delta = batch_mean - mean
-        tot_count = count + batch_count
+        delta = batch_mean - self.mean
+        tot_count = self.count + batch_count
     
         new_mean = self.mean + delta * batch_count / tot_count
-        m_a = self.var * count
+        m_a = self.var * self.count
         m_b = batch_var * batch_count
         M2 = m_a + m_b + (delta ** 2) * self.count * batch_count / tot_count
         new_var = M2 / tot_count
