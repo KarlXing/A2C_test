@@ -31,7 +31,7 @@ class A2C_ACKTR():
             self.optimizer = optim.RMSprop(
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
 
-    def update(self, rollouts, modulation, adv_ratio):
+    def update(self, rollouts, modulation, adv_ratio, value_ratio):
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
@@ -70,7 +70,7 @@ class A2C_ACKTR():
             self.optimizer.acc_stats = False
 
         self.optimizer.zero_grad()
-        (value_loss * self.value_loss_coef / adv_ratio + action_loss -
+        (value_loss * self.value_loss_coef / value_ratio + action_loss -
          dist_entropy * self.entropy_coef).backward()
 
         if self.acktr == False:

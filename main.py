@@ -236,7 +236,7 @@ def main():
             adv_ratio = value_ratio
         else:
             adv_ratio = 1.0
-        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation, adv_ratio)
+        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation, adv_ratio, value_ratio)
 
         if args.track_value_loss:
             writer.add_scalar('analysis/advantage', advantage, j)
