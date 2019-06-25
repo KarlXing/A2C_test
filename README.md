@@ -39,3 +39,7 @@ pip install -e .
 
 # Other requirements
 pip install -r requirements.txt
+
+# Run training
+python3.6 -W ignore main.py --env-name "AssaultNoFrameskip-v0" --num-frames  10000  --log-evaluation  --lr 1e-3 
+
