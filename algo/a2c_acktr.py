@@ -73,7 +73,7 @@ class A2C_ACKTR():
         critic_grad = self.extract_grad()
 
         action_loss.backward(retain_graph=True)
-        actor_grad = self.extract_grad(value_grad)
+        actor_grad = self.extract_grad(critic_grad)
 
         (dist_entropy * self.entropy_coef).backward()
 
