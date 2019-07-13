@@ -101,6 +101,8 @@ def get_args():
                         help='whether to check the value loss of critic')
     parser.add_argument('--save-intermediate-model', action='store_true', default=False,
                         help='whether to save intermeidate models')
+    parser.add_argument('--track-grad', action='store_true', default=False,
+                        help='whether tracking the gradients from two streams')
 
     args = parser.parse_args()
 

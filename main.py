@@ -79,7 +79,7 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, args.carl_wrapper, clip_rewards, args.track_primitive_reward)
 
-    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation, args.complex_model,
+    actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
     actor_critic.to(device)
 
@@ -120,7 +120,6 @@ def main():
     avg_entropy = 0  
     have_done = 0.0
 
-    num_feature_neurons = args.num_processes * 512
     for j in range(num_updates):
         if j == int((num_updates-1)*have_done):
             if args.save_intermediate_model:
@@ -140,50 +139,9 @@ def main():
                         rollouts.recurrent_hidden_states[step],
                         rollouts.masks[step])
 
-            if args.track_hidden_stats:
-                # analyze the stats of f_a 
-                mean_fa = torch.mean(f_a)
-                num_nonzero = f_a.nonzero().size(0)
-                mean_pos = mean_fa * num_feature_neurons / num_nonzero
-                activation_ratio = f_a / mean_pos
-                num_bigger_mean_fa = torch.sum(activation_ratio > 1).item()
-                num_bigger_half_fa = torch.sum(activation_ratio > 0.5).item()
-                writer.add_scalar('analysis/fa_mean_ratio', (num_nonzero - num_bigger_mean_fa)/num_nonzero, g_step)
-                writer.add_scalar('analysis/fa_0.5_ratio', (num_nonzero - num_bigger_half_fa)/num_nonzero, g_step)
-                writer.add_scalar('analysis/fa_active', num_nonzero/num_feature_neurons, g_step)
-
-                # analyze the stats of entropy
-                avg_entropy = 0.999*avg_entropy + 0.001*torch.mean(entropy).item()
-                num_all = len(entropy.view(-1))
-                entropy_ratio = entropy/avg_entropy
-                num_larger_mean = sum(entropy_ratio > 1).item()
-                num_larger_onehalf = sum(entropy_ratio > 1.5).item()
-                num_larger_double = sum(entropy_ratio > 2).item()
-                writer.add_scalar('analysis/entropy_mean_ratio', num_larger_mean/num_all, g_step)
-                writer.add_scalar('analysis/entropy_1.5_ratio', num_larger_onehalf/num_all, g_step)
-                writer.add_scalar('analysis/entropy_2_ratio', num_larger_double/num_all, g_step)
-
-            # update entropy inserted into rollout when appropriate 
-            if args.modulation and j > args.start_modulate * num_updates:
-                insert_entropy = entropy.unsqueeze(1)
-
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             obs = obs/255
-
-            # reward rescaling
-            if args.reward_mode == 1:
-                reward = reward * args.reward_scale
-            elif args.reward_mode == 2:
-                if j < args.change_base_reward * num_updates:
-                    non_zeros = abs(reward[reward != 0])
-                    if len(non_zeros) > 0:
-                        min_abs_reward_step = torch.min(non_zeros).item()
-                        if min_abs_reward > min_abs_reward_step:
-                            min_abs_reward = min_abs_reward_step
-                            print('new min abs reward: ', min_abs_reward, ' time: ', g_step)
-                if min_abs_reward != float('inf'):
-                    reward = reward/min_abs_reward
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -233,18 +191,51 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation)
+        value_loss, action_loss, dist_entropy, value, critic_grad, actor_grad = agent.update(rollouts)
 
         if args.track_value_loss:
             writer.add_scalar('analysis/value_loss', value_loss, j)
             writer.add_scalar('analysis/value', value, j)
             writer.add_scalar('analysis/loss_ratio', value_loss/value, j)
+            writer.add_scalar('analysis/action_loss', action_loss, j)
 
-        if args.modulation and  args.track_lr and args.log_evaluation:
-            writer.add_scalar('analysis/min_lr', torch.min(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/max_lr', torch.max(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/std_lr', torch.std(rollouts.lr).item(), j)
-            writer.add_scalar('analysis/avg_lr', torch.mean(rollouts.lr).item(), j)
+        if args.track_grad:
+            # value of gradient and how much gradients are cancelled out
+            # value
+            abs_critic_grad = [torch.abs(grad) for grad in critic_grad]
+            abs_actor_grad = [torch.abs(grad) for grad in actor_grad]
+            writer.add_scalars('analysis/critic_grad',{'conv1': torch.mean(abs_critic_grad[0]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'conv2': torch.mean(abs_critic_grad[1]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'conv3': torch.mean(abs_critic_grad[2]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'f': torch.mean(abs_critic_grad[3]).item()},j)
+
+            writer.add_scalars('analysis/actor_grad',{'conv1': torch.mean(abs_actor_grad[0]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'conv2': torch.mean(abs_actor_grad[1]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'conv3': torch.mean(abs_actor_grad[2]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'f': torch.mean(abs_actor_grad[3]).item()},j)
+
+            # gradients cancelled out
+            conv1_cancel = abs_critic_grad[0] + abs_actor_grad[0] - torch.abs(critic_grad[0] + actor_grad[0])
+            conv2_cancel = abs_critic_grad[1] + abs_actor_grad[1] - torch.abs(critic_grad[1] + actor_grad[1])
+            conv3_cancel = abs_critic_grad[2] + abs_actor_grad[2] - torch.abs(critic_grad[2] + actor_grad[2])
+            f_cancel = abs_critic_grad[3] + abs_actor_grad[3] - torch.abs(critic_grad[3] + actor_grad[3])
+
+            conv1_cancel_mean = torch.mean(conv1_cancel).item()
+            conv2_cancel_mean = torch.mean(conv2_cancel).item()
+            conv3_cancel_mean = torch.mean(conv3_cancel).item()
+            f_cancel_mean = torch.mean(f_cancel).item()
+
+            writer.add_scalars('analysis/cancelled_grad',{'conv1': conv1_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv2': conv2_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv3': conv3_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean},j)
+
+            # cancel rate
+            writer.add_scalars('analysis/cancelled_grad',{'conv1': conv1_cancel_mean/torch.mean(abs_critic_grad[0]+abs_actor_grad[0]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv2': conv2_cancel_mean/torch.mean(abs_critic_grad[1]+abs_actor_grad[1]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv3': conv3_cancel_mean/torch.mean(abs_critic_grad[2]+abs_actor_grad[2]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean/torch.mean(abs_critic_grad[3]+abs_actor_grad[3]).item()},j)
+
 
         rollouts.after_update()
 

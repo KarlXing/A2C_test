@@ -31,7 +31,7 @@ class A2C_ACKTR():
             self.optimizer = optim.RMSprop(
                 actor_critic.parameters(), lr, eps=eps, alpha=alpha)
 
-    def update(self, rollouts, modulation):
+    def update(self, rollouts):
         obs_shape = rollouts.obs.size()[2:]
         action_shape = rollouts.actions.size()[-1]
         num_steps, num_processes, _ = rollouts.rewards.size()
@@ -48,9 +48,7 @@ class A2C_ACKTR():
         advantages = rollouts.returns[:-1] - values
         value_loss = advantages.pow(2).mean()
 
-        if modulation:
-            rollouts.insert_lr(modulate_lr(rollouts.entropys))
-        action_loss = -(advantages.detach() * action_log_probs * rollouts.lr).mean()
+        action_loss = -(advantages.detach() * action_log_probs).mean()
 
         if self.acktr and self.optimizer.steps % self.optimizer.Ts == 0:
             # Sampled fisher, see Martens 2014
@@ -70,8 +68,14 @@ class A2C_ACKTR():
             self.optimizer.acc_stats = False
 
         self.optimizer.zero_grad()
-        (value_loss * self.value_loss_coef + action_loss -
-         dist_entropy * self.entropy_coef).backward()
+        # value loss
+        (value_loss * self.value_loss_coef).backward(retain_graph=True)
+        critic_grad = self.extract_grad()
+
+        action_loss.backward(retain_graph=True)
+        actor_grad = self.extract_grad(value_grad)
+
+        (dist_entropy * self.entropy_coef).backward()
 
         if self.acktr == False:
             nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
@@ -79,4 +83,18 @@ class A2C_ACKTR():
 
         self.optimizer.step()
 
-        return value_loss.item(), action_loss.item(), dist_entropy.item(), torch.mean(values).item()
+        return value_loss.item(), action_loss.item(), dist_entropy.item(), torch.mean(values).item(), critic_grad, actor_grad
+
+
+    def extract_grad(self, pre_grad = None):
+        if pre_grad is None:
+            conv1_grad = self.actor_critic.base.conv1.weight.grad
+            conv2_grad = self.actor_critic.base.conv2.weight.grad
+            conv3_grad = self.actor_critic.base.conv3.weight.grad
+            f_grad = self.actor_critic.base.f.weight.grad
+        else:
+            conv1_grad = self.actor_critic.base.conv1.weight.grad - pre_grad[0]
+            conv2_grad = self.actor_critic.base.conv2.weight.grad - pre_grad[1]
+            conv3_grad = self.actor_critic.base.conv3.weight.grad - pre_grad[2]
+            f_grad = self.actor_critic.base.f.weight.grad - pre_grad[3]
+        return [conv1_grad, conv2_grad, conv3_grad, f_grad]
