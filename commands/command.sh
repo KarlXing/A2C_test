@@ -1,6 +1,6 @@
 #!/bin/sh
 
-command1="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --value-loss-coef 1.0 ---track-value-loss  --track-grad " 
+command1="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --value-loss-coef 1.0  --track-value-loss  --track-grad " 
 command2="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --value-loss-coef 0.5  --track-value-loss  --track-grad" 
 command3="python3.6 -W ignore main.py --env-name $1 --num-frames  $2  --log-evaluation  --value-loss-coef 0.2  --track-value-loss  --track-grad" 
 
