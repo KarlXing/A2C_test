@@ -7,8 +7,8 @@ command4="python3.6 -W ignore main.py --env-name $5 --num-frames  $1  --log-eval
 
 (date; eval $command1; echo "done") &
 (sleep 5; date; eval $command1; echo "done") &
-(sleep 10; date; eval $command2; echo "done") &
-(sleep 15; date; eval $command2; echo "done")
+(sleep 10; date; eval $command3; echo "done") &
+(sleep 15; date; eval $command4; echo "done")
 
 
 wait 
