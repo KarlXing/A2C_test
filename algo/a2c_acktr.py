@@ -75,10 +75,7 @@ class A2C_ACKTR():
         action_loss.backward(retain_graph=True)
         actor_grad = self.extract_grad(critic_grad)
 
-        (dist_entropy * self.entropy_coef).backward()
-
-        (value_loss * self.value_loss_coef + action_loss -
-         dist_entropy * self.entropy_coef).backward()
+        (-dist_entropy * self.entropy_coef).backward()
 
         if self.acktr == False:
             nn.utils.clip_grad_norm_(self.actor_critic.parameters(),
