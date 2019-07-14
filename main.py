@@ -89,6 +89,7 @@ def main():
         clip_rewards = True
     else:
         clip_rewards = False
+    clip_rewards = True  #force clip rewards
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, clip_rewards, args.track_primitive_reward)
 
@@ -130,7 +131,7 @@ def main():
     reward_count = 0 # for reward density calculation
     reward_start_step = 0 # for reward density calculation
     base_reward = None
-    rewards = {}
+    # rewards = {}
     insert_entropy = torch.ones(args.num_processes, 1)  # entropys inserte into rollout
     value_ratio = 1.0  # the ratio between actual state value and critic value
     running_mean_value = 0.0
@@ -153,6 +154,9 @@ def main():
     rollouts.reset()
 
     for j in range(num_updates):
+        if j == int((num_updates-1)*have_done):
+            print("have done: ", have_done)
+            have_done += 0.1
         for step in range(args.num_steps):
             # Sample actions
             g_step += 1
@@ -165,31 +169,11 @@ def main():
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
             obs = obs/255
-            for r in reward:
-                if r.item() not in rewards:
-                    rewards[r.item()] = 0
-                else:
-                    rewards[r.item()] += 1
-
-            # reward rescaling
-            # if args.reward_mode == 2:
-            #     base_reward, ratio, update = update_base_reward(reward, base_reward)
-            #     if base_reward is not None:
-            #         reward = reward/base_reward
-            #     if ratio != 1:
-            #         actor_critic.base.update_critic(ratio)
-            #     if update:
-            #         writer.add_scalar('base/new_base_reward', base_reward, g_step)
-            if args.reward_mode == 2:
-                running_mean_value = 0.99 * running_mean_value + 0.01 * torch.mean(value).item()
-                if running_mean_value/args.max_value > args.max_ratio:
-                    adjusted_ratio = args.max_value/running_mean_value
-                    value_ratio = value_ratio * adjusted_ratio
-                    actor_critic.base.update_critic(adjusted_ratio)
-                    rollouts.update_ratio(adjusted_ratio)
-                    running_mean_value = args.max_value
-                    writer.add_scalar('analysis/value_ratio', value_ratio, g_step)
-                reward = reward * value_ratio
+            # for r in reward:
+            #     if r.item() not in rewards:
+            #         rewards[r.item()] = 0
+            #     else:
+            #         rewards[r.item()] += 1
 
             masks = torch.FloatTensor([[0.0] if done_ else [1.0]
                                        for done_ in done])
@@ -232,11 +216,7 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        if args.sync_advantage and args.reward_mode == 2:
-            adv_ratio = value_ratio
-        else:
-            adv_ratio = 1.0
-        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts, args.modulation, adv_ratio, value_ratio)
+        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts)
 
         if args.track_value_loss:
             writer.add_scalar('analysis/advantage', advantage, j)
@@ -249,8 +229,6 @@ def main():
 
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()
-    with open(os.path.join(reward_path, args.env_name + now + '_reward.dic'), 'wb') as f:
-        pickle.dump(rewards, f)
 
 if __name__ == "__main__":
     main()
