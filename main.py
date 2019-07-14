@@ -152,7 +152,7 @@ def main():
             rollouts.insert_part(obs, recurrent_hidden_states, masks)
 
     rollouts.reset()
-
+    have_done = 0
     for j in range(num_updates):
         if j == int((num_updates-1)*have_done):
             print("have done: ", have_done)
@@ -216,13 +216,50 @@ def main():
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma, args.tau)
 
-        advantage, value_loss, action_loss, dist_entropy, value = agent.update(rollouts)
+        advantage, value_loss, action_loss, dist_entropy, value, critic_grad, actor_grad = agent.update(rollouts)
 
         if args.track_value_loss:
             writer.add_scalar('analysis/advantage', advantage, j)
-            writer.add_scalar('analysis/value_loss', value_loss, j)
             writer.add_scalar('analysis/value', value, j)
-            writer.add_scalar('analysis/original_value', value/value_ratio, j)
+            writer.add_scalar('analysis/value_loss', value_loss, j)
+            writer.add_scalar('analysis/action_loss', action_loss, j)
+
+        if args.track_grad:
+            # value of gradient and how much gradients are cancelled out
+            # value
+            abs_critic_grad = [torch.abs(grad) for grad in critic_grad]
+            abs_actor_grad = [torch.abs(grad) for grad in actor_grad]
+            writer.add_scalars('analysis/critic_grad',{'conv1': torch.mean(abs_critic_grad[0]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'conv2': torch.mean(abs_critic_grad[1]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'conv3': torch.mean(abs_critic_grad[2]).item()},j)
+            writer.add_scalars('analysis/critic_grad',{'f': torch.mean(abs_critic_grad[3]).item()},j)
+
+            writer.add_scalars('analysis/actor_grad',{'conv1': torch.mean(abs_actor_grad[0]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'conv2': torch.mean(abs_actor_grad[1]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'conv3': torch.mean(abs_actor_grad[2]).item()},j)
+            writer.add_scalars('analysis/actor_grad',{'f': torch.mean(abs_actor_grad[3]).item()},j)
+
+            # gradients cancelled out
+            conv1_cancel = abs_critic_grad[0] + abs_actor_grad[0] - torch.abs(critic_grad[0] + actor_grad[0])
+            conv2_cancel = abs_critic_grad[1] + abs_actor_grad[1] - torch.abs(critic_grad[1] + actor_grad[1])
+            conv3_cancel = abs_critic_grad[2] + abs_actor_grad[2] - torch.abs(critic_grad[2] + actor_grad[2])
+            f_cancel = abs_critic_grad[3] + abs_actor_grad[3] - torch.abs(critic_grad[3] + actor_grad[3])
+
+            conv1_cancel_mean = torch.mean(conv1_cancel).item()
+            conv2_cancel_mean = torch.mean(conv2_cancel).item()
+            conv3_cancel_mean = torch.mean(conv3_cancel).item()
+            f_cancel_mean = torch.mean(f_cancel).item()
+
+            writer.add_scalars('analysis/cancelled_grad',{'conv1': conv1_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv2': conv2_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv3': conv3_cancel_mean},j)
+            writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean},j)
+
+            # cancel rate
+            writer.add_scalars('analysis/cancelled_grad',{'conv1': conv1_cancel_mean/torch.mean(abs_critic_grad[0]+abs_actor_grad[0]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv2': conv2_cancel_mean/torch.mean(abs_critic_grad[1]+abs_actor_grad[1]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'conv3': conv3_cancel_mean/torch.mean(abs_critic_grad[2]+abs_actor_grad[2]).item()},j)
+            writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean/torch.mean(abs_critic_grad[3]+abs_actor_grad[3]).item()},j)
 
 
         rollouts.after_update()

@@ -109,6 +109,8 @@ def get_args():
                         help='after adjusting the critic, how to calculate advantage')
     parser.add_argument('--initiate-steps', type=int, default=100,
                         help='how many steps to run to initiate running_mean_value')
+    parser.add_argument('--track-grad', action='store_true', default=False,
+                        help='whether to track gradients')
 
     args = parser.parse_args()
 
