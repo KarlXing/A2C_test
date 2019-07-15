@@ -83,7 +83,7 @@ class A2C_ACKTR():
 
         self.optimizer.step()
 
-        return  torch.abs(advantages).mean().item(), value_loss.item(), action_loss.item(), dist_entropy.item(), torch.mean(values).item(), critic_grad, actor_grad
+        return  torch.abs(advantages).mean().item(), value_loss.item(), torch.abs(action_loss).item(), dist_entropy.item(), torch.mean(values).item(), critic_grad, actor_grad
 
     def extract_grad(self, pre_grad = None):
         if pre_grad is None:

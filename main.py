@@ -256,10 +256,10 @@ def main():
             writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean},j)
 
             # cancel rate
-            writer.add_scalars('analysis/cancelled_grad',{'conv1': conv1_cancel_mean/torch.mean(abs_critic_grad[0]+abs_actor_grad[0]).item()},j)
-            writer.add_scalars('analysis/cancelled_grad',{'conv2': conv2_cancel_mean/torch.mean(abs_critic_grad[1]+abs_actor_grad[1]).item()},j)
-            writer.add_scalars('analysis/cancelled_grad',{'conv3': conv3_cancel_mean/torch.mean(abs_critic_grad[2]+abs_actor_grad[2]).item()},j)
-            writer.add_scalars('analysis/cancelled_grad',{'f': f_cancel_mean/torch.mean(abs_critic_grad[3]+abs_actor_grad[3]).item()},j)
+            writer.add_scalars('analysis/cancelled_rate',{'conv1': conv1_cancel_mean/torch.mean(abs_critic_grad[0]+abs_actor_grad[0]).item()},j)
+            writer.add_scalars('analysis/cancelled_rate',{'conv2': conv2_cancel_mean/torch.mean(abs_critic_grad[1]+abs_actor_grad[1]).item()},j)
+            writer.add_scalars('analysis/cancelled_rate',{'conv3': conv3_cancel_mean/torch.mean(abs_critic_grad[2]+abs_actor_grad[2]).item()},j)
+            writer.add_scalars('analysis/cancelled_rate',{'f': f_cancel_mean/torch.mean(abs_critic_grad[3]+abs_actor_grad[3]).item()},j)
 
 
         rollouts.after_update()
