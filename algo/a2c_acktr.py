@@ -87,13 +87,13 @@ class A2C_ACKTR():
 
     def extract_grad(self, pre_grad = None):
         if pre_grad is None:
-            conv1_grad = self.actor_critic.base.conv1.weight.grad
-            conv2_grad = self.actor_critic.base.conv2.weight.grad
-            conv3_grad = self.actor_critic.base.conv3.weight.grad
-            f_grad = self.actor_critic.base.f.weight.grad
+            conv1_grad = self.actor_critic.base.conv1.weight.grad.clone()
+            conv2_grad = self.actor_critic.base.conv2.weight.grad.clone()
+            conv3_grad = self.actor_critic.base.conv3.weight.grad.clone()
+            f_grad = self.actor_critic.base.f.weight.grad.clone()
         else:
-            conv1_grad = self.actor_critic.base.conv1.weight.grad - pre_grad[0]
-            conv2_grad = self.actor_critic.base.conv2.weight.grad - pre_grad[1]
-            conv3_grad = self.actor_critic.base.conv3.weight.grad - pre_grad[2]
-            f_grad = self.actor_critic.base.f.weight.grad - pre_grad[3]
+            conv1_grad = self.actor_critic.base.conv1.weight.grad.clone() - pre_grad[0]
+            conv2_grad = self.actor_critic.base.conv2.weight.grad.clone() - pre_grad[1]
+            conv3_grad = self.actor_critic.base.conv3.weight.grad.clone() - pre_grad[2]
+            f_grad = self.actor_critic.base.f.weight.grad.clone() - pre_grad[3]
         return [conv1_grad, conv2_grad, conv3_grad, f_grad]
