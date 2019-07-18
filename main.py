@@ -155,6 +155,10 @@ def main():
     have_done = 0
     for j in range(num_updates):
         if j == int((num_updates-1)*have_done):
+            save_model = actor_critic
+            if args.cuda:
+                save_model = copy.deepcopy(actor_critic).cpu()
+            torch.save(save_model, os.path.join(save_path, args.env_name + args.lr + "_" + str(have_done) + ".pt"))
             print("have done: ", have_done)
             have_done += 0.1
         for step in range(args.num_steps):
