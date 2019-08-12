@@ -1,9 +1,9 @@
 #!/bin/sh
 
-command1="python3.6 -W ignore main.py --env-name $2 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad" 
-command2="python3.6 -W ignore main.py --env-name $3 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad" 
-command3="python3.6 -W ignore main.py --env-name $4 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad" 
-command4="python3.6 -W ignore main.py --env-name $5 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad" 
+command1="python3.6 -W ignore main.py --env-name $2 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad  --value-loss-coef 1.0"
+command2="python3.6 -W ignore main.py --env-name $3 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad  --value-loss-coef 1.0"
+command3="python3.6 -W ignore main.py --env-name $4 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad  --value-loss-coef 1.0"
+command4="python3.6 -W ignore main.py --env-name $5 --num-frames  $1  --log-evaluation   --track-value-loss  --track-grad  --value-loss-coef 1.0"
 
 (date; eval $command1; echo "done") &
 (sleep 5; date; eval $command2; echo "done") &
@@ -11,7 +11,7 @@ command4="python3.6 -W ignore main.py --env-name $5 --num-frames  $1  --log-eval
 (sleep 15; date; eval $command4; echo "done")
 
 
-wait 
+wait
 echo "mean"
 echo $command1 >> command
 echo $command2 >> command
