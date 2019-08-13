@@ -14,7 +14,8 @@ import torch.optim as optim
 import algo
 from arguments import get_args
 from envs import make_vec_envs
-from model import Policy
+from model import Policy as Policy_old
+from model2 import Policy
 from storage import RolloutStorage
 from visualize import visdom_plot
 from tensorboardX import SummaryWriter
@@ -49,7 +50,7 @@ except OSError:
     for f in files:
         os.remove(f)
 
-# eval_log_dir = args.log_dir + "_eval/" 
+# eval_log_dir = args.log_dir + "_eval/"
 
 # try:
 #     os.makedirs(eval_log_dir)
@@ -93,8 +94,41 @@ def main():
     envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
                         args.gamma, args.log_dir, args.add_timestep, device, False, 4, clip_rewards, args.track_primitive_reward)
 
+    # load pretrained model
+    if ("alien" in args.env_name.lower()):
+        old_ac = torch.load("/pv/models/alien01.pt")
+    else if ("pacman" in args.env_name.lower()):
+        old_ac = torch.load("pv/models/mspacman01.pt")
+    else if ("phoenix" in args.env_name.lower()):
+        old_ac = torch.load("/pv/models/phoenix01.pt")
+    else if ("beamrider" in args.env_name.lower()):
+        old_ac = torch.load("/pv/models/beamrider01.pt")
+
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
         base_kwargs={'recurrent': args.recurrent_policy})
+
+    # load trained weights
+    actor_critic.base.conv1.weight.data = old_ac.base.conv1.weight.data
+    actor_critic.base.conv1.bias.data = old_ac.base.conv1.bias.data
+    actor_critic.base.conv1_2.weight.data = old_ac.base.conv1.weight.data
+    actor_critic.base.conv1_2.bias.data = old_ac.base.conv1.bias.data
+    actor_critic.base.conv2.weight.data = old_ac.base.conv2.weight.data
+    actor_critic.base.conv2.bias.data = old_ac.base.conv2.bias.data
+    actor_critic.base.conv2_2.weight.data = old_ac.base.conv2.weight.data
+    actor_critic.base.conv2_2.bias.data = old_ac.base.conv2.bias.data
+    actor_critic.base.conv3.weight.data = old_ac.base.conv3.weight.data
+    actor_critic.base.conv3.bias.data = old_ac.base.conv3.bias.data
+    actor_critic.base.conv3_2.weight.data = old_ac.base.conv3.weight.data
+    actor_critic.base.conv3_2.bias.data = old_ac.base.conv3.bias.data
+    actor_critic.base.f.weight.data = old_ac.base.f.weight.data
+    actor_critic.base.f.bias.data = old_ac.base.f.bias.data
+    actor_critic.base.f_2.weight.data = old_ac.base.f.weight.data
+    actor_critic.base.f_2.bias.data = old_ac.base.f.bias.data
+    actor_critic.base.critic_linear.weight.data = old_ac.base.critic_linear.weight.data
+    actor_critic.base.critic_linear.bias.data = old_ac.base.critic_linear.bias.data
+    actor_critic.dist.linear.weight.data = old_ac.dist.linear.weight.data
+    actor_critic.dist.linear.bias.data = old_ac.dist.linear.bias.data
+
     actor_critic.to(device)
 
     if args.algo == 'a2c':
