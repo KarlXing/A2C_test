@@ -97,11 +97,11 @@ def main():
     # load pretrained model
     if ("alien" in args.env_name.lower()):
         old_ac = torch.load("/pv/models/alien01.pt")
-    else if ("pacman" in args.env_name.lower()):
+    elif ("pacman" in args.env_name.lower()):
         old_ac = torch.load("pv/models/mspacman01.pt")
-    else if ("phoenix" in args.env_name.lower()):
+    elif ("phoenix" in args.env_name.lower()):
         old_ac = torch.load("/pv/models/phoenix01.pt")
-    else if ("beamrider" in args.env_name.lower()):
+    elif ("beamrider" in args.env_name.lower()):
         old_ac = torch.load("/pv/models/beamrider01.pt")
 
     actor_critic = Policy(envs.observation_space.shape, envs.action_space, args.activation,
